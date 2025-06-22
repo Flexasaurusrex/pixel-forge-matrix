@@ -111,6 +111,11 @@ class PixelCollageBuilder {
         this.colorCycling = false;
         this.cycleTime = 0;
         
+        // 🌸 NEW: BLOOM EFFECT PROPERTIES
+        this.bloomActive = false;
+        this.bloomSeeds = [];
+        this.bloomTime = 0;
+        
         // GIF Recording
         this.recording = false;
         this.gif = null;
@@ -249,6 +254,16 @@ class PixelCollageBuilder {
                     from { transform: translateX(100%); opacity: 0; }
                     to { transform: translateX(0); opacity: 1; }
                 }
+                @keyframes bloomPulse {
+                    0%, 100% { 
+                        box-shadow: 0 0 10px #ff69b4;
+                        transform: scale(1);
+                    }
+                    50% { 
+                        box-shadow: 0 0 25px #ff69b4, 0 0 35px #00ff69;
+                        transform: scale(1.02);
+                    }
+                }
             `;
             document.head.appendChild(style);
         }
@@ -280,6 +295,11 @@ class PixelCollageBuilder {
         const animate = () => {
             this.cycleTime += 0.05;
             
+            // 🌸 NEW: UPDATE BLOOM EFFECTS
+            if (this.bloomActive) {
+                this.updateBloomEffect();
+            }
+            
             // Redraw time-based pixel effects
             for (let x = 0; x < this.gridWidth; x++) {
                 for (let y = 0; y < this.gridHeight; y++) {
@@ -307,6 +327,303 @@ class PixelCollageBuilder {
             requestAnimationFrame(animate);
         };
         animate();
+    }
+    
+    // 🌸 NEW: BLOOM EFFECT METHODS
+    toggleBloom() {
+        this.bloomActive = !this.bloomActive;
+        const btn = document.getElementById('bloomBtn');
+        
+        if (this.bloomActive) {
+            // Start blooming
+            if (btn) {
+                btn.classList.add('active');
+                btn.style.background = 'linear-gradient(135deg, #ff69b4, #00ff69, #69ff69)';
+                btn.style.animation = 'bloomPulse 2s infinite ease-in-out';
+            }
+            this.updateModeIndicator('🌸 BLOOM MODE ACTIVE');
+            
+            // Create initial bloom seeds
+            this.createBloomSeeds();
+            
+            console.log('🌸 BLOOM ACTIVATED - Organic growth patterns emerging!');
+        } else {
+            // Stop blooming
+            if (btn) {
+                btn.classList.remove('active');
+                btn.style.background = '';
+                btn.style.animation = '';
+            }
+            this.updateModeIndicator('🌸 BLOOM STOPPED');
+            
+            // Clear bloom seeds
+            this.bloomSeeds = [];
+            
+            console.log('🌸 BLOOM DEACTIVATED');
+        }
+    }
+    
+    createBloomSeeds() {
+        // Create initial seed points for organic growth
+        const numSeeds = 3 + Math.floor(Math.random() * 5); // 3-7 seeds
+        
+        for (let i = 0; i < numSeeds; i++) {
+            this.bloomSeeds.push({
+                x: Math.random() * this.gridWidth,
+                y: Math.random() * this.gridHeight,
+                age: 0,
+                energy: 0.5 + Math.random() * 0.5,
+                phase: Math.random() * Math.PI * 2,
+                growthRate: 0.02 + Math.random() * 0.03,
+                color: this.getBloomColor(),
+                branches: []
+            });
+        }
+    }
+    
+    updateBloomEffect() {
+        this.bloomTime += 0.016; // 60fps timing
+        
+        // Update each bloom seed
+        this.bloomSeeds.forEach((seed, seedIndex) => {
+            seed.age += seed.growthRate;
+            seed.phase += 0.02;
+            
+            // Organic growth pattern - each seed grows outward
+            const currentRadius = Math.sin(seed.age) * 15 + 5;
+            const branches = 6 + Math.floor(seed.energy * 8); // 6-14 branches
+            
+            // Create flower-like branching pattern
+            for (let branch = 0; branch < branches; branch++) {
+                const branchAngle = (branch / branches) * Math.PI * 2 + seed.phase;
+                
+                // Create organic, flowing branch
+                for (let segment = 0; segment < currentRadius; segment++) {
+                    const t = segment / currentRadius;
+                    
+                    // Organic curve - not straight lines
+                    const curvature = Math.sin(t * Math.PI * 3 + seed.phase) * 3;
+                    const flowAngle = branchAngle + curvature * 0.2;
+                    
+                    // Distance with organic variation
+                    const distance = segment + Math.sin(t * Math.PI * 2 + this.bloomTime * 2) * 2;
+                    
+                    const x = Math.floor(seed.x + Math.cos(flowAngle) * distance);
+                    const y = Math.floor(seed.y + Math.sin(flowAngle) * distance);
+                    
+                    // Only draw if within bounds
+                    if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                        // Create blooming effect with varying intensity
+                        const intensity = (1 - t) * seed.energy * (0.7 + Math.sin(this.bloomTime * 3 + t * 10) * 0.3);
+                        
+                        if (intensity > 0.2) {
+                            // Get color that shifts over time
+                            const bloomColor = this.getEvolvingBloomColor(seed, t, this.bloomTime);
+                            
+                            // Create the bloom pixel with organic texture
+                            this.setPixel(x, y, {
+                                color: bloomColor,
+                                type: this.getBloomPixelType(intensity)
+                            });
+                            
+                            // Add secondary growth - smaller branches
+                            if (Math.random() < 0.1 && segment > 2) {
+                                for (let subBranch = 0; subBranch < 3; subBranch++) {
+                                    const subAngle = flowAngle + (subBranch - 1) * 0.5;
+                                    const subLength = 2 + Math.random() * 3;
+                                    
+                                    for (let subSeg = 1; subSeg <= subLength; subSeg++) {
+                                        const subX = Math.floor(x + Math.cos(subAngle) * subSeg);
+                                        const subY = Math.floor(y + Math.sin(subAngle) * subSeg);
+                                        
+                                        if (subX >= 0 && subX < this.gridWidth && subY >= 0 && subY < this.gridHeight) {
+                                            const subIntensity = intensity * (1 - subSeg / subLength) * 0.6;
+                                            if (subIntensity > 0.1) {
+                                                this.setPixel(subX, subY, {
+                                                    color: this.adjustColorBrightness(bloomColor, subIntensity),
+                                                    type: 'phantom'
+                                                });
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Create connecting tendrils between nearby seeds
+            for (let otherIndex = seedIndex + 1; otherIndex < this.bloomSeeds.length; otherIndex++) {
+                const otherSeed = this.bloomSeeds[otherIndex];
+                const distance = Math.sqrt(
+                    Math.pow(seed.x - otherSeed.x, 2) + 
+                    Math.pow(seed.y - otherSeed.y, 2)
+                );
+                
+                // Connect seeds that are close enough
+                if (distance < 30 && Math.random() < 0.02) {
+                    this.createBloomTendril(seed, otherSeed);
+                }
+            }
+            
+            // Seed evolution - seeds can split or die
+            if (seed.age > 20 && Math.random() < 0.005) {
+                if (seed.energy > 0.7 && this.bloomSeeds.length < 12) {
+                    // Split into new seed
+                    this.bloomSeeds.push({
+                        x: seed.x + (Math.random() - 0.5) * 20,
+                        y: seed.y + (Math.random() - 0.5) * 20,
+                        age: 0,
+                        energy: seed.energy * 0.7,
+                        phase: Math.random() * Math.PI * 2,
+                        growthRate: 0.02 + Math.random() * 0.03,
+                        color: this.mutateBloomColor(seed.color),
+                        branches: []
+                    });
+                } else if (seed.energy < 0.3) {
+                    // Remove weak seeds
+                    this.bloomSeeds.splice(seedIndex, 1);
+                }
+            }
+        });
+        
+        // Occasionally add new random seeds for continuous growth
+        if (Math.random() < 0.001 && this.bloomSeeds.length < 15) {
+            this.bloomSeeds.push({
+                x: Math.random() * this.gridWidth,
+                y: Math.random() * this.gridHeight,
+                age: 0,
+                energy: 0.3 + Math.random() * 0.4,
+                phase: Math.random() * Math.PI * 2,
+                growthRate: 0.02 + Math.random() * 0.03,
+                color: this.getBloomColor(),
+                branches: []
+            });
+        }
+    }
+    
+    createBloomTendril(seed1, seed2) {
+        const steps = Math.floor(Math.sqrt(
+            Math.pow(seed1.x - seed2.x, 2) + 
+            Math.pow(seed1.y - seed2.y, 2)
+        ));
+        
+        for (let step = 0; step <= steps; step++) {
+            const t = step / steps;
+            
+            // Organic curve between seeds
+            const curve = Math.sin(t * Math.PI) * 5;
+            
+            const x = Math.floor(seed1.x + t * (seed2.x - seed1.x) + Math.sin(t * Math.PI * 2) * curve);
+            const y = Math.floor(seed1.y + t * (seed2.y - seed1.y) + Math.cos(t * Math.PI * 2) * curve);
+            
+            if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                const tendrilIntensity = Math.sin(t * Math.PI) * 0.6;
+                if (tendrilIntensity > 0.2) {
+                    const tendrilColor = this.blendColors(seed1.color, seed2.color, t);
+                    this.setPixel(x, y, {
+                        color: tendrilColor,
+                        type: 'particle'
+                    });
+                }
+            }
+        }
+    }
+    
+    getBloomColor() {
+        // Beautiful bloom colors - organic and natural
+        const bloomPalette = [
+            '#ff69b4', '#ff1493', '#da70d6', '#ba55d3', '#9370db',
+            '#8a2be2', '#9932cc', '#ff00ff', '#ee82ee', '#dda0dd',
+            '#00ff7f', '#00fa9a', '#98fb98', '#90ee90', '#7fffd4',
+            '#40e0d0', '#48d1cc', '#00ced1', '#5f9ea0', '#4682b4'
+        ];
+        
+        return bloomPalette[Math.floor(Math.random() * bloomPalette.length)];
+    }
+    
+    getEvolvingBloomColor(seed, t, time) {
+        // Color that shifts over time for mesmerizing effect
+        const baseHue = this.hexToHsl(seed.color).h;
+        const timeShift = Math.sin(time * 0.5 + t * 3) * 30; // ±30 degree hue shift
+        const newHue = (baseHue + timeShift + 360) % 360;
+        
+        const saturation = 70 + Math.sin(time * 2 + t * 5) * 20; // 50-90% saturation
+        const lightness = 50 + Math.sin(time * 3 + t * 7) * 25;  // 25-75% lightness
+        
+        return `hsl(${newHue}, ${saturation}%, ${lightness}%)`;
+    }
+    
+    mutateBloomColor(parentColor) {
+        const hsl = this.hexToHsl(parentColor);
+        
+        // Slight mutation in hue
+        const newHue = (hsl.h + (Math.random() - 0.5) * 60 + 360) % 360;
+        
+        return `hsl(${newHue}, ${hsl.s}%, ${hsl.l}%)`;
+    }
+    
+    blendColors(color1, color2, t) {
+        const hsl1 = this.hexToHsl(color1);
+        const hsl2 = this.hexToHsl(color2);
+        
+        const blendedHue = (hsl1.h + t * (hsl2.h - hsl1.h) + 360) % 360;
+        const blendedSat = hsl1.s + t * (hsl2.s - hsl1.s);
+        const blendedLight = hsl1.l + t * (hsl2.l - hsl1.l);
+        
+        return `hsl(${blendedHue}, ${blendedSat}%, ${blendedLight}%)`;
+    }
+    
+    adjustColorBrightness(color, intensity) {
+        const hsl = this.hexToHsl(color);
+        const newLightness = Math.max(10, hsl.l * intensity);
+        return `hsl(${hsl.h}, ${hsl.s}%, ${newLightness}%)`;
+    }
+    
+    getBloomPixelType(intensity) {
+        // Different pixel types based on bloom intensity
+        if (intensity > 0.8) {
+            return 'nova';
+        } else if (intensity > 0.6) {
+            return 'surge';
+        } else if (intensity > 0.4) {
+            return 'particle';
+        } else if (intensity > 0.2) {
+            return 'phantom';
+        } else {
+            return 'quantum';
+        }
+    }
+    
+    hexToHsl(hex) {
+        // Convert hex to HSL for color manipulation
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        
+        if (max === min) {
+            h = s = 0;
+        } else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        
+        return {
+            h: h * 360,
+            s: s * 100,
+            l: l * 100
+        };
     }
     
     setupCanvas() {
@@ -463,6 +780,9 @@ class PixelCollageBuilder {
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
         document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
         document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
+        
+        // 🌸 NEW: BLOOM BUTTON
+        document.getElementById('bloomBtn')?.addEventListener('click', () => this.toggleBloom());
     }
     
     toggleColorCycling() {
@@ -1743,6 +2063,10 @@ class PixelCollageBuilder {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
         this.canvasHistory.clear(); // Clear history when canvas is cleared
+        
+        // 🌸 Clear bloom seeds when canvas is cleared
+        this.bloomSeeds = [];
+        
         this.updatePixelCount();
     }
     
