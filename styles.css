@@ -363,3 +363,72 @@ body {
     font-size: 11px;
     color: #00ff41;
 }
+
+/* Undo/Redo Button Styling */
+.undo-redo-container {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    margin: 5px 0;
+}
+
+.undo-redo-btn {
+    background: linear-gradient(45deg, #1a1a1a, #2a2a2a);
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    min-width: 60px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+}
+
+.undo-redo-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.undo-redo-btn:hover:not(:disabled)::before {
+    left: 100%;
+}
+
+.undo-redo-btn:hover:not(:disabled) {
+    background: linear-gradient(45deg, #00ffff11, #00ffff22);
+    box-shadow: 
+        0 0 10px #00ffff44,
+        inset 0 0 10px #00ffff22;
+    transform: translateY(-1px);
+    border-color: #00ffff;
+    text-shadow: 0 0 5px #00ffff;
+}
+
+.undo-redo-btn:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 
+        0 0 5px #00ffff44,
+        inset 0 0 5px #00ffff33;
+}
+
+.undo-redo-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    border-color: #444;
+    color: #666;
+    background: linear-gradient(45deg, #0a0a0a, #1a1a1a);
+}
+
+.undo-redo-btn:disabled::before {
+    display: none;
+}
