@@ -1,0 +1,24 @@
+{
+  "name": "pixel-collage-builder",
+  "version": "1.0.0",
+  "description": "Epic Retrowave Pixel Collage Builder with Quantum Textures and Animated Effects",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static site - no build needed'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "pixel-art",
+    "collage",
+    "retrowave",
+    "cyberpunk",
+    "digital-art",
+    "creative-tools"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "vercel": "^32.0.0"
+  }
+}
