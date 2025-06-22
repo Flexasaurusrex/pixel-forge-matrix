@@ -10,7 +10,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- GIF Library with Worker Fix -->
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js"></script>
+    <script>
+        // Fix for GIF.js worker CORS issue
+        window.gifWorkerReady = false;
+        if (typeof GIF !== 'undefined') {
+            // Fetch the worker script and create a blob URL to avoid CORS
+            fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js')
+                .then(response => {
+                    if (!response.ok) throw new Error('Worker fetch failed');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const workerUrl = URL.createObjectURL(blob);
+                    // Override the default worker script path
+                    const originalGIF = window.GIF;
+                    window.GIF = function(options) {
+                        options = options || {};
+                        options.workerScript = workerUrl;
+                        return new originalGIF(options);
+                    };
+                    // Copy static properties
+                    Object.setPrototypeOf(window.GIF, originalGIF);
+                    Object.assign(window.GIF, originalGIF);
+                    window.gifWorkerReady = true;
+                    console.log('✅ GIF worker loaded successfully');
+                })
+                .catch(error => {
+                    console.warn('⚠️ GIF worker failed to load:', error);
+                    window.gifWorkerReady = false;
+                });
+        }
+    </script>
 </head>
 <body>
     <div class="app-container">
@@ -36,7 +69,7 @@
         </div>
         
         <div class="main-canvas">
-            <canvas id="canvas" width="800" height="600"></canvas>
+            <canvas id="canvas" width="800" height="600" style="image-rendering: pixelated;"></canvas>
             <canvas id="gridOverlay" class="grid-overlay" width="800" height="600"></canvas>
         </div>
         
