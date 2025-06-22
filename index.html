@@ -11,6 +11,84 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     
+    <!-- Mobile Detection and Auto-Redirect -->
+    <script>
+    (function() {
+        // Mobile detection and redirect
+        function isMobileDevice() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const mobileKeywords = [
+                'android', 'iphone', 'ipad', 'ipod', 'blackberry', 
+                'windows phone', 'mobile', 'opera mini'
+            ];
+            
+            // Check user agent
+            const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
+            
+            // Check screen size (phones typically < 768px width)
+            const isSmallScreen = window.innerWidth <= 768;
+            
+            // Check touch capability
+            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            return isMobileUA || (isSmallScreen && isTouchDevice);
+        }
+        
+        // Only redirect if:
+        // 1. We're on mobile
+        // 2. Not already on mobile path
+        // 3. User hasn't opted for desktop version
+        if (isMobileDevice() && 
+            !window.location.pathname.includes('/mobile') && 
+            !localStorage.getItem('forceDesktop')) {
+            
+            // Show brief message and redirect
+            document.addEventListener('DOMContentLoaded', function() {
+                document.body.innerHTML = `
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        background: #000000;
+                        color: #00ff41;
+                        font-family: 'Orbitron', monospace;
+                        text-align: center;
+                        padding: 20px;
+                    ">
+                        <h2 style="margin-bottom: 20px; text-shadow: 0 0 10px #00ff41;">🚀 Redirecting to Mobile Version...</h2>
+                        <p style="margin-bottom: 30px; opacity: 0.7; color: #ff006e;">Optimized for touch devices</p>
+                        <button onclick="stayOnDesktop()" style="
+                            background: linear-gradient(135deg, #ff006e, #ff4081);
+                            border: 2px solid #ff006e;
+                            color: white;
+                            padding: 12px 20px;
+                            border-radius: 8px;
+                            font-family: 'Orbitron', monospace;
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: all 0.3s ease;
+                            box-shadow: 0 0 10px #ff006e;
+                        " onmouseover="this.style.boxShadow='0 0 20px #ff006e'" onmouseout="this.style.boxShadow='0 0 10px #ff006e'">Stay on Desktop Version</button>
+                    </div>
+                `;
+                
+                // Add function to stay on desktop
+                window.stayOnDesktop = function() {
+                    localStorage.setItem('forceDesktop', 'true');
+                    location.reload();
+                };
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/mobile';
+                }, 2000);
+            });
+        }
+    })();
+    </script>
+    
     <!-- GIF Library with Worker Fix -->
     <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js"></script>
     <script>
