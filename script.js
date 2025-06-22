@@ -122,14 +122,26 @@ class PixelCollageBuilder {
     constructor() {
         console.log('🚀 PixelCollageBuilder constructor started');
         try {
-            // Core canvas elements
+            // Wait a moment to ensure DOM is fully loaded
+            console.log('🔍 Looking for canvas elements...');
+            
+            // Core canvas elements with validation
             this.canvas = document.getElementById('pixelCanvas');
+            console.log('🎯 pixelCanvas found:', this.canvas);
+            
+            if (!this.canvas) {
+                throw new Error('pixelCanvas element not found in DOM');
+            }
+            
             this.ctx = this.canvas.getContext('2d');
+            console.log('✅ Canvas context obtained');
+            
             this.gridCanvas = document.getElementById('gridOverlay');
+            console.log('🎯 gridOverlay found:', this.gridCanvas);
             this.gridCtx = this.gridCanvas ? this.gridCanvas.getContext('2d') : null;
 
-            if (!this.canvas || !this.ctx) {
-                throw new Error('Canvas elements not found');
+            if (!this.ctx) {
+                throw new Error('Canvas context could not be obtained');
             }
 
             // Canvas properties
@@ -1137,19 +1149,42 @@ let pixelBuilder;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM Content Loaded - Starting Pixel Forge Matrix...');
     
-    // Detect if mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    if (isMobile) {
-        console.log('📱 Initializing mobile version...');
-        document.body.classList.add('mobile');
-    } else {
-        console.log('💻 Initializing desktop version...');
-    }
-    
-    // Initialize the main application
-    pixelBuilder = new PixelCollageBuilder();
-    
-    // Make it globally accessible for onclick handlers
-    window.pixelBuilder = pixelBuilder;
+    // Add a small delay to ensure all elements are rendered
+    setTimeout(() => {
+        try {
+            // Detect if mobile
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                console.log('📱 Initializing mobile version...');
+                document.body.classList.add('mobile');
+            } else {
+                console.log('💻 Initializing desktop version...');
+            }
+            
+            // Verify canvas elements exist before initializing
+            const pixelCanvas = document.getElementById('pixelCanvas');
+            const gridOverlay = document.getElementById('gridOverlay');
+            
+            console.log('🔍 Pre-check - pixelCanvas:', pixelCanvas);
+            console.log('🔍 Pre-check - gridOverlay:', gridOverlay);
+            
+            if (!pixelCanvas) {
+                console.error('❌ pixelCanvas element not found! Check your HTML.');
+                return;
+            }
+            
+            // Initialize the main application
+            pixelBuilder = new PixelCollageBuilder();
+            
+            // Make it globally accessible for onclick handlers
+            window.pixelBuilder = pixelBuilder;
+            
+            console.log('🌌 Pixel Forge Matrix initialized successfully!');
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize Pixel Forge Matrix:', error);
+            console.error('Stack:', error.stack);
+        }
+    }, 100); // 100ms delay to ensure DOM is fully rendered
 });
