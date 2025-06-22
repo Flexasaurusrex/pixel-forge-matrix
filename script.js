@@ -27,6 +27,20 @@ class PixelCollageBuilder {
         this.colorCycling = false;
         this.cycleTime = 0;
         
+        // GIF Recording
+        this.recording = false;
+        this.gif = null;
+        this.recordingFrames = 0;
+        this.maxRecordingFrames = 120; // 4 seconds at 30fps
+        this.recordingStartTime = 0;
+        
+        // GIF Recording
+        this.recording = false;
+        this.gif = null;
+        this.recordingFrames = 0;
+        this.maxRecordingFrames = 120; // 4 seconds at 30fps
+        this.recordingStartTime = 0;
+        
         // Retrowave color palettes
         this.retrowavePalettes = [
             {
@@ -111,6 +125,12 @@ class PixelCollageBuilder {
                     }
                 }
             }
+            
+            // Capture frame for GIF recording
+            if (this.recording) {
+                this.captureGifFrame();
+            }
+            
             requestAnimationFrame(animate);
         };
         animate();
@@ -265,6 +285,7 @@ class PixelCollageBuilder {
         // Action buttons
         document.getElementById('retrowaveBtn').addEventListener('click', () => this.cycleRetrowavePalette());
         document.getElementById('colorCycleBtn').addEventListener('click', () => this.toggleColorCycling());
+        document.getElementById('recordGifBtn').addEventListener('click', () => this.toggleGifRecording());
         document.getElementById('randomize').addEventListener('click', () => this.randomizeCanvas());
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
         document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
@@ -290,6 +311,117 @@ class PixelCollageBuilder {
             this.updateModeIndicator('COLOR CYCLE DISABLED');
             console.log('⏹️ COLOR CYCLE DEACTIVATED');
         }
+    }
+    
+    toggleGifRecording() {
+        if (this.recording) {
+            this.stopGifRecording();
+        } else {
+            this.startGifRecording();
+        }
+    }
+    
+    startGifRecording() {
+        if (typeof GIF === 'undefined') {
+            alert('GIF library not loaded! Please refresh and try again.');
+            return;
+        }
+        
+        this.recording = true;
+        this.recordingFrames = 0;
+        this.recordingStartTime = Date.now();
+        
+        // Initialize GIF encoder
+        this.gif = new GIF({
+            workers: 2,
+            quality: 10,
+            width: this.canvas.width,
+            height: this.canvas.height,
+            workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+        });
+        
+        // Update button state
+        const btn = document.getElementById('recordGifBtn');
+        btn.classList.add('active');
+        btn.textContent = '⏹ STOP REC';
+        btn.style.background = 'linear-gradient(135deg, #ff0000, #ff4444)';
+        btn.style.animation = 'recordingPulse 0.5s infinite alternate';
+        
+        this.updateModeIndicator('🔴 RECORDING GIF');
+        
+        console.log('🎬 GIF RECORDING STARTED - Capturing epic animation!');
+        console.log(`📹 Will record ${this.maxRecordingFrames} frames for perfect loop`);
+    }
+    
+    stopGifRecording() {
+        if (!this.recording) return;
+        
+        this.recording = false;
+        
+        // Update button state
+        const btn = document.getElementById('recordGifBtn');
+        btn.classList.remove('active');
+        btn.textContent = '⚙ ENCODING...';
+        btn.style.background = 'linear-gradient(135deg, #ff8000, #ffaa00)';
+        btn.style.animation = 'processingPulse 1s infinite';
+        
+        this.updateModeIndicator('⚙️ ENCODING GIF');
+        
+        // Render the GIF
+        this.gif.on('finished', (blob) => {
+            // Download the GIF
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `pixel-forge-animation-${Date.now()}.gif`;
+            link.href = url;
+            link.click();
+            
+            // Reset button
+            btn.textContent = '◉ RECORD GIF';
+            btn.style.background = '';
+            btn.style.animation = '';
+            this.updateModeIndicator('✅ GIF EXPORTED');
+            
+            console.log('🎉 GIF EXPORT COMPLETE!');
+            console.log(`💾 Saved as: ${link.download}`);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                this.updateModeIndicator('PAINT MODE');
+            }, 2000);
+        });
+        
+        this.gif.render();
+        
+        console.log(`🎬 GIF RECORDING STOPPED - Captured ${this.recordingFrames} frames`);
+        console.log('⚙️ Encoding perfect loop...');
+    }
+    
+    captureGifFrame() {
+        // Only capture every 2nd frame to keep file size reasonable (30fps -> 15fps)
+        if (this.recordingFrames % 2 !== 0) {
+            this.recordingFrames++;
+            return;
+        }
+        
+        // Stop recording after max frames for perfect loop
+        if (this.recordingFrames >= this.maxRecordingFrames) {
+            this.stopGifRecording();
+            return;
+        }
+        
+        // Capture current canvas frame
+        this.gif.addFrame(this.canvas, {
+            delay: 66, // ~15 fps (1000ms/15 = 66ms)
+            copy: true
+        });
+        
+        this.recordingFrames++;
+        
+        // Update progress
+        const progress = Math.floor((this.recordingFrames / this.maxRecordingFrames) * 100);
+        this.updateModeIndicator(`🔴 RECORDING ${progress}%`);
     }
     
     applyColorCycling(x, y, pixel) {
@@ -336,6 +468,117 @@ class PixelCollageBuilder {
             this.clearPixel(x, y);
             this.drawPixel(x, y);
         }
+    }
+    
+    toggleGifRecording() {
+        if (this.recording) {
+            this.stopGifRecording();
+        } else {
+            this.startGifRecording();
+        }
+    }
+    
+    startGifRecording() {
+        if (typeof GIF === 'undefined') {
+            alert('GIF library not loaded! Please refresh and try again.');
+            return;
+        }
+        
+        this.recording = true;
+        this.recordingFrames = 0;
+        this.recordingStartTime = Date.now();
+        
+        // Initialize GIF encoder
+        this.gif = new GIF({
+            workers: 2,
+            quality: 10,
+            width: this.canvas.width,
+            height: this.canvas.height,
+            workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+        });
+        
+        // Update button state
+        const btn = document.getElementById('recordGifBtn');
+        btn.classList.add('active');
+        btn.textContent = '⏹ STOP REC';
+        btn.style.background = 'linear-gradient(135deg, #ff0000, #ff4444)';
+        btn.style.animation = 'recordingPulse 0.5s infinite alternate';
+        
+        this.updateModeIndicator('🔴 RECORDING GIF');
+        
+        console.log('🎬 GIF RECORDING STARTED - Capturing epic animation!');
+        console.log(`📹 Will record ${this.maxRecordingFrames} frames for perfect loop`);
+    }
+    
+    stopGifRecording() {
+        if (!this.recording) return;
+        
+        this.recording = false;
+        
+        // Update button state
+        const btn = document.getElementById('recordGifBtn');
+        btn.classList.remove('active');
+        btn.textContent = '⚙ ENCODING...';
+        btn.style.background = 'linear-gradient(135deg, #ff8000, #ffaa00)';
+        btn.style.animation = 'processingPulse 1s infinite';
+        
+        this.updateModeIndicator('⚙️ ENCODING GIF');
+        
+        // Render the GIF
+        this.gif.on('finished', (blob) => {
+            // Download the GIF
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `pixel-forge-animation-${Date.now()}.gif`;
+            link.href = url;
+            link.click();
+            
+            // Reset button
+            btn.textContent = '◉ RECORD GIF';
+            btn.style.background = '';
+            btn.style.animation = '';
+            this.updateModeIndicator('✅ GIF EXPORTED');
+            
+            console.log('🎉 GIF EXPORT COMPLETE!');
+            console.log(`💾 Saved as: ${link.download}`);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                this.updateModeIndicator('PAINT MODE');
+            }, 2000);
+        });
+        
+        this.gif.render();
+        
+        console.log(`🎬 GIF RECORDING STOPPED - Captured ${this.recordingFrames} frames`);
+        console.log('⚙️ Encoding perfect loop...');
+    }
+    
+    captureGifFrame() {
+        // Only capture every 2nd frame to keep file size reasonable (30fps -> 15fps)
+        if (this.recordingFrames % 2 !== 0) {
+            this.recordingFrames++;
+            return;
+        }
+        
+        // Stop recording after max frames for perfect loop
+        if (this.recordingFrames >= this.maxRecordingFrames) {
+            this.stopGifRecording();
+            return;
+        }
+        
+        // Capture current canvas frame
+        this.gif.addFrame(this.canvas, {
+            delay: 66, // ~15 fps (1000ms/15 = 66ms)
+            copy: true
+        });
+        
+        this.recordingFrames++;
+        
+        // Update progress
+        const progress = Math.floor((this.recordingFrames / this.maxRecordingFrames) * 100);
+        this.updateModeIndicator(`🔴 RECORDING ${progress}%`);
     }
     
     cycleRetrowavePalette() {
