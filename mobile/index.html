@@ -434,7 +434,7 @@
                 this.recordingFrames = 0;
                 this.maxRecordingFrames = 60; // 2 seconds at 30fps for mobile
                 
-                // 🔥 TOUCH TRAIL EFFECTS SYSTEM!
+                // 🔥 TOUCH TRAIL EFFECTS SYSTEM + POSITION-BASED COLORS!
                 this.touchTrails = [];
                 this.touchHistory = [];
                 this.maxTrailLength = 10;
@@ -443,6 +443,14 @@
                 this.touchIntensity = 1;
                 this.trailMode = 'growing'; // growing, exploding, flowing, ripple, spiral
                 this.trailModes = ['growing', 'exploding', 'flowing', 'ripple', 'spiral', 'fractal'];
+                
+                // 🌈 COLOR ZONES - different areas create different color themes!
+                this.colorZones = [
+                    { colors: ['#ff0000', '#ff4000', '#ff8000', '#ffff00'], name: 'FIRE' },    // Top-left: Fire
+                    { colors: ['#0080ff', '#00bfff', '#00ffff', '#40e0d0'], name: 'ICE' },     // Top-right: Ice
+                    { colors: ['#8000ff', '#ff00ff', '#ff0080', '#ff4081'], name: 'MAGIC' },   // Bottom-left: Magic
+                    { colors: ['#00ff00', '#40ff40', '#80ff80', '#00ff80'], name: 'NATURE' }   // Bottom-right: Nature
+                ];
                 
                 // FULL FEATURE SET - All 16 quantum effects + constructs + patterns!
                 this.pixelTypes = [
@@ -583,10 +591,10 @@
                 const y = Math.floor((clientY - rect.top) / this.gridSize);
                 
                 if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
-                    // 🔥 Enhanced touch with speed-based effects
+                    // 🔥 Enhanced touch with speed-based effects + CHAOTIC COLORS!
                     const baseSize = Math.max(2, Math.floor(this.touchIntensity));
                     
-                    // Paint main touch area with intensity-based size
+                    // Paint main touch area with intensity-based size + RANDOM COLORS
                     for (let dx = 0; dx < baseSize; dx++) {
                         for (let dy = 0; dy < baseSize; dy++) {
                             const px = Math.min(x + dx, this.gridWidth - 1);
@@ -600,27 +608,35 @@
                                 effectType = ['particle', 'surge', 'vortex'][Math.floor(Math.random() * 3)];
                             }
                             
+                            // 🌈 DYNAMIC COLOR SELECTION based on speed + position!
+                            let touchColor = this.getSpeedBasedColor(this.touchSpeed, px, py);
+                            
+                            // Add extra chaos for variety
+                            if (Math.random() < 0.3) {
+                                touchColor = this.getPositionBasedColor(px, py);
+                            }
+                            
                             this.setPixel(px, py, {
-                                color: this.currentColor,
+                                color: touchColor,
                                 type: effectType
                             });
                         }
                     }
                     
-                    // Create persistent trail effect
+                    // Create persistent trail effect with VARIED COLORS
                     if (this.touchSpeed > 5) {
                         this.touchTrails.push({
                             x: x,
                             y: y,
                             size: Math.floor(this.touchIntensity),
-                            color: this.currentColor,
-                            type: 'phantom',
+                            color: this.getRandomColor(), // Random trail color
+                            type: ['phantom', 'temporal', 'spectrum'][Math.floor(Math.random() * 3)],
                             age: 0,
                             alpha: 1.0
                         });
                     }
                     
-                    // Speed-based particle scatter
+                    // Speed-based particle scatter with RAINBOW CHAOS
                     if (this.touchSpeed > 10) {
                         const scatterCount = Math.floor(this.touchSpeed / 5);
                         for (let i = 0; i < scatterCount; i++) {
@@ -630,9 +646,11 @@
                             const sy = y + Math.sin(angle) * distance;
                             
                             if (sx >= 0 && sx < this.gridWidth && sy >= 0 && sy < this.gridHeight) {
+                                // 🌈 EXPLOSIVE RAINBOW SCATTERING!
+                                const explosiveColors = ['#ff0000', '#ff8000', '#ffff00', '#00ff00', '#0080ff', '#8000ff', '#ff00ff'];
                                 this.setPixel(Math.floor(sx), Math.floor(sy), {
-                                    color: this.getRandomColor(),
-                                    type: 'spectrum'
+                                    color: explosiveColors[Math.floor(Math.random() * explosiveColors.length)],
+                                    type: ['spectrum', 'chaos', 'lightning', 'nova'][Math.floor(Math.random() * 4)]
                                 });
                             }
                         }
@@ -906,15 +924,15 @@
             }
             
             updateTouchTrails() {
-                // Update any persistent trail effects
+                // Update any persistent trail effects with COLOR MUTATIONS!
                 this.touchTrails = this.touchTrails.filter(trail => {
                     trail.age++;
                     trail.size *= 1.1; // Grow over time
                     trail.alpha *= 0.95; // Fade over time
                     
                     if (trail.alpha > 0.1 && trail.age < 30) {
-                        // Continue drawing trail effect
-                        const trailColor = trail.color + Math.floor(trail.alpha * 255).toString(16).padStart(2, '0');
+                        // Continue drawing trail effect with EVOLVING COLORS
+                        const baseAlpha = Math.floor(trail.alpha * 255).toString(16).padStart(2, '0');
                         
                         for (let i = 0; i < trail.size; i++) {
                             const angle = Math.random() * Math.PI * 2;
@@ -923,8 +941,23 @@
                             const y = trail.y + Math.sin(angle) * radius;
                             
                             if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                                // 🌈 TRAIL COLORS EVOLVE OVER TIME!
+                                let trailColor;
+                                if (trail.age < 10) {
+                                    // Young trails = bright colors
+                                    const brightColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00'];
+                                    trailColor = brightColors[Math.floor(Math.random() * brightColors.length)];
+                                } else if (trail.age < 20) {
+                                    // Middle-aged trails = cycle colors
+                                    trailColor = this.cycleColors[Math.floor(this.cycleTime * 6 + trail.age) % this.cycleColors.length];
+                                } else {
+                                    // Old trails = fading colors
+                                    const fadingColors = ['#8000ff', '#4000ff', '#0040ff', '#004080'];
+                                    trailColor = fadingColors[Math.floor(Math.random() * fadingColors.length)];
+                                }
+                                
                                 this.setPixel(Math.floor(x), Math.floor(y), {
-                                    color: trailColor,
+                                    color: trailColor + baseAlpha,
                                     type: trail.type
                                 });
                             }
@@ -952,7 +985,6 @@
             
             createTouchExplosion(centerX, centerY) {
                 const explosionSize = 3 + Math.floor(Math.random() * 4); // 3-6 radius
-                const explosionColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00'];
                 const explosionType = ['nova', 'chaos', 'lightning'][Math.floor(Math.random() * 3)];
                 
                 for (let radius = 1; radius <= explosionSize; radius++) {
@@ -962,6 +994,8 @@
                         const y = centerY + Math.sin(rad) * radius;
                         
                         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            // 🌈 RANDOM EXPLOSION COLORS - no more fixed colors!
+                            const explosionColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00', '#ff4081', '#9c27b0', '#ff9800'];
                             this.setPixel(Math.floor(x), Math.floor(y), {
                                 color: explosionColors[Math.floor(Math.random() * explosionColors.length)],
                                 type: explosionType
@@ -976,7 +1010,7 @@
                 const burstEffects = ['spectrum', 'vortex', 'temporal'];
                 const burstType = burstEffects[Math.floor(Math.random() * burstEffects.length)];
                 
-                // Create radiating burst
+                // Create radiating burst with RAINBOW COLORS
                 for (let i = 0; i < 16; i++) {
                     const angle = (i / 16) * Math.PI * 2;
                     for (let r = 1; r <= burstSize; r++) {
@@ -984,8 +1018,10 @@
                         const y = centerY + Math.sin(angle) * r;
                         
                         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            // 🌈 RAINBOW BURST - different color per ray!
+                            const rainbowColors = ['#ff0000', '#ff8000', '#ffff00', '#00ff00', '#0080ff', '#0000ff', '#8000ff', '#ff00ff'];
                             this.setPixel(Math.floor(x), Math.floor(y), {
-                                color: this.getRandomColor(),
+                                color: rainbowColors[i % rainbowColors.length],
                                 type: burstType
                             });
                         }
@@ -997,31 +1033,32 @@
                 if (this.touchHistory.length < 2) return;
                 
                 const intensity = Math.floor(this.touchIntensity);
-                const trailColor = this.cycleColors[Math.floor(this.cycleTime * 4) % this.cycleColors.length];
+                // 🌈 VARIED TRAIL COLORS based on speed and time!
+                const baseTrailColor = this.cycleColors[Math.floor(this.cycleTime * 4) % this.cycleColors.length];
                 
                 switch(this.trailMode) {
                     case 'growing':
-                        this.createGrowingTrail(currentPos, intensity, trailColor);
+                        this.createGrowingTrail(currentPos, intensity, baseTrailColor);
                         break;
                     case 'exploding':
-                        this.createExplodingTrail(currentPos, intensity, trailColor);
+                        this.createExplodingTrail(currentPos, intensity, baseTrailColor);
                         break;
                     case 'flowing':
-                        this.createFlowingTrail(currentPos, intensity, trailColor);
+                        this.createFlowingTrail(currentPos, intensity, baseTrailColor);
                         break;
                     case 'ripple':
-                        this.createRippleTrail(currentPos, intensity, trailColor);
+                        this.createRippleTrail(currentPos, intensity, baseTrailColor);
                         break;
                     case 'spiral':
-                        this.createSpiralTrail(currentPos, intensity, trailColor);
+                        this.createSpiralTrail(currentPos, intensity, baseTrailColor);
                         break;
                     case 'fractal':
-                        this.createFractalTrail(currentPos, intensity, trailColor);
+                        this.createFractalTrail(currentPos, intensity, baseTrailColor);
                         break;
                 }
             }
             
-            createGrowingTrail(pos, intensity, color) {
+            createGrowingTrail(pos, intensity, baseColor) {
                 // Growing organic patterns that expand from touch path
                 this.touchHistory.forEach((histPos, index) => {
                     const age = this.touchHistory.length - index;
@@ -1034,8 +1071,10 @@
                         const y = histPos.y + Math.sin(angle) * radius;
                         
                         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            // 🌈 VARIED COLORS for growing effect
+                            const growColors = [baseColor, this.getRandomColor(), '#ffffff'];
                             this.setPixel(Math.floor(x), Math.floor(y), {
-                                color: color,
+                                color: growColors[Math.floor(Math.random() * growColors.length)],
                                 type: 'quantum'
                             });
                         }
@@ -1043,8 +1082,8 @@
                 });
             }
             
-            createExplodingTrail(pos, intensity, color) {
-                // Explosive bursts along the trail
+            createExplodingTrail(pos, intensity, baseColor) {
+                // Explosive bursts along the trail with CHAOTIC COLORS
                 if (Math.random() < 0.3) { // Random explosions
                     const explosionSize = intensity + 1;
                     for (let i = 0; i < 8; i++) {
@@ -1054,8 +1093,10 @@
                         const y = pos.y + Math.sin(angle) * radius;
                         
                         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            // 🔥 EXPLOSIVE RANDOM COLORS
+                            const explosiveColors = ['#ff0000', '#ff4000', '#ff8000', '#ffff00', '#ffffff'];
                             this.setPixel(Math.floor(x), Math.floor(y), {
-                                color: color,
+                                color: explosiveColors[Math.floor(Math.random() * explosiveColors.length)],
                                 type: 'chaos'
                             });
                         }
@@ -1063,7 +1104,7 @@
                 }
             }
             
-            createFlowingTrail(pos, intensity, color) {
+            createFlowingTrail(pos, intensity, baseColor) {
                 // Flowing liquid-like patterns that follow touch
                 this.touchHistory.forEach((histPos, index) => {
                     if (index === 0) return;
@@ -1074,7 +1115,7 @@
                         y: histPos.y - prevPos.y
                     };
                     
-                    // Create perpendicular flow particles
+                    // Create perpendicular flow particles with FLOWING COLORS
                     for (let i = 0; i < intensity * 3; i++) {
                         const perpAngle = Math.atan2(flowDirection.y, flowDirection.x) + Math.PI / 2;
                         const flowDistance = (Math.random() - 0.5) * intensity * 2;
@@ -1082,8 +1123,10 @@
                         const y = histPos.y + Math.sin(perpAngle) * flowDistance;
                         
                         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            // 💧 FLOWING WATER COLORS
+                            const flowColors = ['#0080ff', '#00bfff', '#87ceeb', '#40e0d0', '#00ffff', '#7fffd4'];
                             this.setPixel(Math.floor(x), Math.floor(y), {
-                                color: color,
+                                color: flowColors[Math.floor(Math.random() * flowColors.length)],
                                 type: 'particle'
                             });
                         }
@@ -1091,8 +1134,8 @@
                 });
             }
             
-            createRippleTrail(pos, intensity, color) {
-                // Ripple waves emanating from touch points
+            createRippleTrail(pos, intensity, baseColor) {
+                // Ripple waves emanating from touch points with WAVE COLORS
                 const rippleRadius = intensity * 2;
                 const rippleCount = 3;
                 
@@ -1106,8 +1149,10 @@
                         const y = pos.y + Math.sin(rad) * radius;
                         
                         if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            // 🌊 RIPPLE WAVE COLORS
+                            const waveColors = ['#4169e1', '#1e90ff', '#00bfff', '#87cefa', '#b0e0e6'];
                             this.setPixel(Math.floor(x), Math.floor(y), {
-                                color: color,
+                                color: waveColors[ripple % waveColors.length],
                                 type: 'surge'
                             });
                         }
@@ -1115,8 +1160,8 @@
                 }
             }
             
-            createSpiralTrail(pos, intensity, color) {
-                // Spiral patterns that grow from touch
+            createSpiralTrail(pos, intensity, baseColor) {
+                // Spiral patterns that grow from touch with PSYCHEDELIC COLORS
                 const spiralSize = intensity * 3;
                 const spiralDensity = intensity * 10;
                 
@@ -1127,17 +1172,22 @@
                     const y = pos.y + Math.sin(angle) * radius;
                     
                     if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                        // 🌀 PSYCHEDELIC SPIRAL COLORS
+                        const spiralColors = ['#ff00ff', '#8000ff', '#0080ff', '#00ffff', '#00ff80', '#80ff00', '#ffff00', '#ff8000'];
+                        const colorIndex = Math.floor((i / spiralDensity) * spiralColors.length);
                         this.setPixel(Math.floor(x), Math.floor(y), {
-                            color: color,
+                            color: spiralColors[colorIndex % spiralColors.length],
                             type: 'vortex'
                         });
                     }
                 }
             }
             
-            createFractalTrail(pos, intensity, color) {
-                // Self-similar fractal patterns
-                this.drawFractalBranch(pos.x, pos.y, intensity + 1, 0, intensity, color);
+            createFractalTrail(pos, intensity, baseColor) {
+                // Self-similar fractal patterns with ELECTRIC COLORS
+                const fractalColors = ['#ffffff', '#00ffff', '#0080ff', '#8000ff', '#ff00ff'];
+                const fractalColor = fractalColors[Math.floor(Math.random() * fractalColors.length)];
+                this.drawFractalBranch(pos.x, pos.y, intensity + 1, 0, intensity, fractalColor);
             }
             
             drawFractalBranch(x, y, length, angle, depth, color) {
@@ -1183,6 +1233,39 @@
             
             getRandomColor() {
                 return this.colors[Math.floor(Math.random() * this.colors.length)];
+            }
+            
+            // 🌈 NEW: Get color based on touch position for more variety!
+            getPositionBasedColor(x, y) {
+                const zoneX = x < this.gridWidth / 2 ? 0 : 1;  // Left or right
+                const zoneY = y < this.gridHeight / 2 ? 0 : 1; // Top or bottom
+                const zoneIndex = zoneY * 2 + zoneX; // 0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right
+                
+                const zone = this.colorZones[zoneIndex];
+                const zoneColor = zone.colors[Math.floor(Math.random() * zone.colors.length)];
+                
+                // 20% chance to use random color instead for chaos
+                return Math.random() < 0.2 ? this.getRandomColor() : zoneColor;
+            }
+            
+            // 🔥 NEW: Get speed-based color palette
+            getSpeedBasedColor(speed, x, y) {
+                if (speed > 20) {
+                    // ULTRA FAST = White lightning/chaos
+                    return ['#ffffff', '#ffffcc', '#ffff99'][Math.floor(Math.random() * 3)];
+                } else if (speed > 15) {
+                    // FAST = Hot explosive colors
+                    return ['#ff0000', '#ff4000', '#ff8000', '#ffff00'][Math.floor(Math.random() * 4)];
+                } else if (speed > 8) {
+                    // MEDIUM = Position-based themed colors
+                    return this.getPositionBasedColor(x, y);
+                } else if (speed > 3) {
+                    // SLOW = Cool flowing colors
+                    return ['#0080ff', '#00bfff', '#00ffff', '#80ffff'][Math.floor(Math.random() * 4)];
+                } else {
+                    // VERY SLOW = Gentle pastels
+                    return ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff'][Math.floor(Math.random() * 5)];
+                }
             }
             
             // 🚀 FIXED MOBILE RANDOMIZE - GUARANTEED VISIBLE RESULTS!
