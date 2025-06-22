@@ -7,26 +7,33 @@ class CanvasHistory {
         this.history = [];
         this.currentIndex = -1;
         this.isRestoring = false;
+        
+        // Save initial state
+        this.saveState();
     }
-
+    
     saveState() {
         if (this.isRestoring) return;
         
-        // Remove any states after current position
+        // Remove any states after current index (when user made new changes after undo)
         this.history = this.history.slice(0, this.currentIndex + 1);
         
-        // Add new state
+        // Get current canvas data
         const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        this.history.push(imageData);
         
-        // Remove oldest state if we exceed max
+        // Add new state
+        this.history.push(imageData);
+        this.currentIndex++;
+        
+        // Keep only maxStates
         if (this.history.length > this.maxStates) {
             this.history.shift();
-        } else {
-            this.currentIndex++;
+            this.currentIndex--;
         }
+        
+        this.updateButtons();
     }
-
+    
     undo() {
         if (this.currentIndex > 0) {
             this.currentIndex--;
@@ -35,7 +42,7 @@ class CanvasHistory {
         }
         return false;
     }
-
+    
     redo() {
         if (this.currentIndex < this.history.length - 1) {
             this.currentIndex++;
@@ -44,1147 +51,1880 @@ class CanvasHistory {
         }
         return false;
     }
-
+    
     restoreState() {
         if (this.currentIndex >= 0 && this.currentIndex < this.history.length) {
             this.isRestoring = true;
-            this.ctx.putImageData(this.history[this.currentIndex], 0, 0);
+            const imageData = this.history[this.currentIndex];
+            this.ctx.putImageData(imageData, 0, 0);
             this.isRestoring = false;
+            this.updateButtons();
         }
     }
-
-    hasUndo() {
-        return this.currentIndex > 0;
+    
+    updateButtons() {
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        
+        if (undoBtn) {
+            undoBtn.disabled = this.currentIndex <= 0;
+        }
+        
+        if (redoBtn) {
+            redoBtn.disabled = this.currentIndex >= this.history.length - 1;
+        }
     }
-
-    hasRedo() {
-        return this.currentIndex < this.history.length - 1;
-    }
-
+    
     clear() {
         this.history = [];
         this.currentIndex = -1;
+        this.saveState();
     }
 }
 
-// Enhanced Performance Monitor
-class PerformanceMonitor {
-    constructor() {
-        this.fps = 0;
-        this.frameCount = 0;
-        this.lastTime = performance.now();
-        this.pixelCount = 0;
-        this.effectsCount = 0;
-    }
-
-    update() {
-        this.frameCount++;
-        const currentTime = performance.now();
-        
-        if (currentTime - this.lastTime >= 1000) {
-            this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
-            this.frameCount = 0;
-            this.lastTime = currentTime;
-            this.updateDisplay();
-        }
-    }
-
-    updateDisplay() {
-        const fpsElement = document.getElementById('fpsDisplay');
-        const pixelElement = document.getElementById('pixelCount');
-        
-        if (fpsElement) {
-            fpsElement.textContent = `${this.fps} FPS`;
-        }
-        
-        if (pixelElement) {
-            pixelElement.textContent = `${this.pixelCount} pixels`;
-        }
-    }
-
-    addPixels(count) {
-        this.pixelCount += count;
-    }
-
-    addEffect() {
-        this.effectsCount++;
-    }
-
-    reset() {
-        this.pixelCount = 0;
-        this.effectsCount = 0;
-        this.updateDisplay();
-    }
-}
-
-// Main Pixel Collage Builder Class with FULL ANIMATIONS
 class PixelCollageBuilder {
     constructor() {
-        console.log('🚀 PixelCollageBuilder constructor started');
-        try {
-            // Wait a moment to ensure DOM is fully loaded
-            console.log('🔍 Looking for canvas elements...');
-            
-            // Core canvas elements with validation
-            this.canvas = document.getElementById('pixelCanvas');
-            console.log('🎯 pixelCanvas found:', this.canvas);
-            
-            if (!this.canvas) {
-                throw new Error('pixelCanvas element not found in DOM');
+        this.canvas = document.getElementById('canvas');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+        this.gridCanvas = document.getElementById('gridOverlay');
+        this.gridCtx = this.gridCanvas.getContext('2d');
+        
+        this.pixelSize = 4;
+        this.gridSize = 4;
+        this.currentTool = 'paint';
+        this.currentColor = '#00ff41';
+        this.brushSize = 1;
+        this.isDrawing = false;
+        this.showGrid = true;
+        this.pixelCount = 0;
+        
+        this.gridWidth = this.canvas.width / this.gridSize;
+        this.gridHeight = this.canvas.height / this.gridSize;
+        
+        this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
+        
+        this.selectedPixelType = 'quantum';
+        this.selectedSprite = null;
+        this.lastFpsTime = 0;
+        this.frameCount = 0;
+        this.retrowaveIndex = 0;
+        this.colorCycling = false;
+        this.cycleTime = 0;
+        
+        // GIF Recording
+        this.recording = false;
+        this.gif = null;
+        this.recordingFrames = 0;
+        this.maxRecordingFrames = 120; // 4 seconds at 30fps
+        this.recordingStartTime = 0;
+        
+        // Retrowave color palettes
+        this.retrowavePalettes = [
+            {
+                name: 'NEON NIGHTS',
+                colors: ['#ff006e', '#00f5ff', '#8000ff', '#ff8000', '#00ff80', '#ff0080', '#0080ff', '#ffff00', '#ff4081', '#9c27b0', '#03dac6', '#ff9800', '#000000', '#ffffff', '#808080', '#ff0040', '#40ff80', '#8040ff', '#ff8040', '#4080ff']
+            },
+            {
+                name: 'MIAMI VICE',
+                colors: ['#ff1493', '#00ffff', '#ff69b4', '#1e90ff', '#ff6347', '#40e0d0', '#da70d6', '#87ceeb', '#ff7f50', '#20b2aa', '#ff00ff', '#00bfff', '#ff4500', '#48d1cc', '#c71585', '#00ced1', '#ff1493', '#5f9ea0', '#ff6b6b', '#4ecdc4']
+            },
+            {
+                name: 'SYNTHWAVE',
+                colors: ['#b967db', '#01cdfe', '#05ffa1', '#b967db', '#fffb96', '#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff', '#06ffa5', '#1d1d1d', '#ffffff', '#ff9500', '#c77dff', '#e0aaff', '#560bad', '#480ca8', '#3c096c', '#240046']
+            },
+            {
+                name: 'CYBERPUNK',
+                colors: ['#00ff41', '#ff006e', '#00f5ff', '#ffff00', '#ff4081', '#9c27b0', '#03dac6', '#607d8b', '#ff9800', '#4caf50', '#e91e63', '#2196f3', '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff']
+            },
+            {
+                name: 'OUTRUN',
+                colors: ['#ff073a', '#39ff14', '#ff0080', '#00ffff', '#ffff00', '#8a2be2', '#ff4500', '#00ff7f', '#dc143c', '#00bfff', '#ff1493', '#7fff00', '#ff6347', '#40e0d0', '#ff69b4', '#1e90ff', '#ffa500', '#9370db', '#32cd32', '#ff4081']
             }
-            
-            this.ctx = this.canvas.getContext('2d');
-            console.log('✅ Canvas context obtained');
-            
-            this.gridCanvas = document.getElementById('gridOverlay');
-            console.log('🎯 gridOverlay found:', this.gridCanvas);
-            this.gridCtx = this.gridCanvas ? this.gridCanvas.getContext('2d') : null;
-
-            if (!this.ctx) {
-                throw new Error('Canvas context could not be obtained');
+        ];
+        
+        // Retrowave cycling colors for animation
+        this.retrowaveCycleColors = [
+            '#ff006e', '#ff0080', '#ff00ff', '#8000ff', 
+            '#0080ff', '#00f5ff', '#00ffff', '#00ff80',
+            '#00ff00', '#80ff00', '#ffff00', '#ff8000',
+            '#ff4000', '#ff0000', '#ff0040', '#ff0060'
+        ];
+        
+        this.init();
+        this.startFpsCounter();
+    }
+    
+    init() {
+        this.setupCanvas();
+        this.generatePixelLibrary();
+        this.generateSpriteLibrary();
+        this.generatePatternLibrary();
+        this.generateColorPicker();
+        this.setupEventListeners();
+        this.setupUndoRedo(); // Initialize undo/redo system
+        this.drawGrid();
+        this.updatePixelCount();
+        this.startAnimationLoop();
+    }
+    
+    setupUndoRedo() {
+        this.canvasHistory = new CanvasHistory(this.canvas);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.undo();
+                } else if ((e.key === 'y') || (e.key === 'z' && e.shiftKey)) {
+                    e.preventDefault();
+                    this.redo();
+                }
             }
-
-            // Canvas properties
-            this.pixelSize = 8;
-            this.gridVisible = false;
-            
-            // Animation properties - RESTORED!
-            this.animationId = null;
-            this.isAnimating = false;
-            this.animationSpeed = 1;
-            this.timeAccumulator = 0;
-            
-            // Current tool and colors
-            this.currentTool = 'paint';
-            this.currentColor = '#ff00ff';
-            this.brushSize = 1;
-            
-            // Interactive state
-            this.isDrawing = false;
-            this.lastPos = { x: 0, y: 0 };
-            
-            // History and performance monitoring
-            this.history = new CanvasHistory(this.canvas);
-            this.performanceMonitor = new PerformanceMonitor();
-            
-            // Animation effects - CRITICAL FOR EPIC VISUALS
-            this.activeEffects = [];
-            this.particleSystems = [];
-            this.quantumFields = [];
-            this.geometricAnimations = [];
-            
-            // Touch and mobile support
-            this.touchTrails = [];
-            this.touchEffectMode = 'GROWING';
-            
-            console.log('✅ Canvas elements found, size:', this.canvas.width, 'x', this.canvas.height);
-            
-            this.initializeCanvas();
-            this.setupEventListeners();
-            this.generateAllUI();
-            this.startAnimationLoop(); // START THE MAGIC!
-            
-            console.log('🌌 Pixel Forge Matrix initialized successfully with animations!');
-            
-        } catch (error) {
-            console.error('❌ Error initializing PixelCollageBuilder:', error);
+        });
+        
+        // Button event listeners
+        document.getElementById('undoBtn')?.addEventListener('click', () => this.undo());
+        document.getElementById('redoBtn')?.addEventListener('click', () => this.redo());
+    }
+    
+    undo() {
+        if (this.canvasHistory.undo()) {
+            this.showToast('↶ Undo');
+            this.syncPixelsFromCanvas();
+            this.updatePixelCount();
         }
     }
-
-    // ANIMATION LOOP - THE HEART OF THE MAGIC
-    startAnimationLoop() {
-        console.log('🎬 Starting animation loop...');
-        this.isAnimating = true;
+    
+    redo() {
+        if (this.canvasHistory.redo()) {
+            this.showToast('↷ Redo');
+            this.syncPixelsFromCanvas();
+            this.updatePixelCount();
+        }
+    }
+    
+    saveCanvasState() {
+        this.canvasHistory?.saveState();
+    }
+    
+    syncPixelsFromCanvas() {
+        // Sync the pixels array with the canvas after undo/redo
+        // This is a simplified sync - in practice you'd want to rebuild from canvas data
+        // For now, we'll just update the pixel count
+        this.updatePixelCount();
+    }
+    
+    showToast(message) {
+        // Simple toast notification
+        const existingToast = document.querySelector('.toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
         
-        const animate = (timestamp) => {
-            if (!this.isAnimating) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 255, 0.9);
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10000;
+            animation: toastSlide 0.3s ease-out;
+        `;
+        
+        // Add animation keyframes if not exists
+        if (!document.querySelector('#toast-styles')) {
+            const style = document.createElement('style');
+            style.id = 'toast-styles';
+            style.textContent = `
+                @keyframes toastSlide {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 2000);
+    }
+    
+    startFpsCounter() {
+        const updateFps = () => {
+            this.frameCount++;
+            const now = performance.now();
+            if (now - this.lastFpsTime >= 1000) {
+                document.getElementById('fps').textContent = this.frameCount;
+                this.frameCount = 0;
+                this.lastFpsTime = now;
+            }
+            requestAnimationFrame(updateFps);
+        };
+        updateFps();
+    }
+    
+    startAnimationLoop() {
+        const animate = () => {
+            this.cycleTime += 0.05;
             
-            this.timeAccumulator += 0.016; // ~60fps
+            // Redraw time-based pixel effects
+            for (let x = 0; x < this.gridWidth; x++) {
+                for (let y = 0; y < this.gridHeight; y++) {
+                    const pixel = this.pixels[x][y];
+                    if (pixel) {
+                        // Apply color cycling if enabled
+                        if (this.colorCycling) {
+                            this.applyColorCycling(x, y, pixel);
+                        }
+                        
+                        // Redraw animated pixel types
+                        if (this.isAnimatedPixelType(pixel.type)) {
+                            this.clearPixel(x, y);
+                            this.drawPixel(x, y);
+                        }
+                    }
+                }
+            }
             
-            // Update all active animations
-            this.updateQuantumEffects(timestamp);
-            this.updateParticleSystems(timestamp);
-            this.updateGeometricAnimations(timestamp);
-            this.updateTouchTrails(timestamp);
+            // Capture frame for GIF recording
+            if (this.recording) {
+                this.captureGifFrame();
+            }
             
-            // Performance monitoring
-            this.performanceMonitor.update();
+            requestAnimationFrame(animate);
+        };
+        animate();
+    }
+    
+    setupCanvas() {
+        this.canvas.style.imageRendering = 'pixelated';
+        this.ctx.imageSmoothingEnabled = false;
+    }
+    
+    generatePixelLibrary() {
+        const library = document.getElementById('pixelLibrary');
+        const pixelTypes = [
+            { type: 'quantum', char: '⚛', color: '#00ff41', desc: 'QUANTUM DOT' },
+            { type: 'chaos', char: '※', color: '#ff006e', desc: 'CHAOS FIELD' },
+            { type: 'flicker', char: '◈', color: '#00f5ff', desc: 'FLICKER STORM' },
+            { type: 'strobe', char: '⚡', color: '#ffff00', desc: 'STROBE PULSE' },
+            { type: 'static', char: '▣', color: '#ff4081', desc: 'STATIC BURST' },
+            { type: 'distort', char: '◉', color: '#9c27b0', desc: 'REALITY TEAR' },
+            { type: 'particle', char: '⬢', color: '#4caf50', desc: 'PARTICLE FLUX' },
+            { type: 'lightning', char: '⟡', color: '#ff9800', desc: 'LIGHTNING ARC' },
+            { type: 'temporal', char: '◎', color: '#03dac6', desc: 'TIME RIFT' },
+            { type: 'nova', char: '※', color: '#607d8b', desc: 'NOVA BURST' },
+            { type: 'fractal', char: '◊', color: '#795548', desc: 'FRACTAL NOISE' },
+            { type: 'phantom', char: '⬡', color: '#e91e63', desc: 'PHANTOM ECHO' },
+            { type: 'surge', char: '⚡', color: '#2196f3', desc: 'ENERGY SURGE' },
+            { type: 'cascade', char: '◈', color: '#00bcd4', desc: 'CASCADE WAVE' },
+            { type: 'vortex', char: '◉', color: '#8b00ff', desc: 'VOID VORTEX' },
+            { type: 'spectrum', char: '⬢', color: '#ffc107', desc: 'SPECTRUM SHIFT' }
+        ];
+        
+        pixelTypes.forEach(pixel => {
+            const item = document.createElement('div');
+            item.className = 'pixel-item';
+            item.innerHTML = `<div style="font-size: 20px; color: ${pixel.color}">${pixel.char}</div><div style="font-size: 8px; color: #666; margin-top: 2px;">${pixel.desc}</div>`;
+            item.dataset.type = pixel.type;
+            item.addEventListener('click', () => this.selectPixelType(pixel.type, item));
+            library.appendChild(item);
+        });
+        
+        library.children[0].classList.add('selected');
+    }
+    
+    generateSpriteLibrary() {
+        const library = document.getElementById('spriteLibrary');
+        const sprites = [
+            { name: 'fractal', pattern: '◈◇◈', description: 'FRACTAL' },
+            { name: 'mandala', pattern: '※◆※', description: 'MANDALA' },
+            { name: 'spiral', pattern: '◉◎◉', description: 'SPIRAL' },
+            { name: 'matrix', pattern: '▣▢▣', description: 'MATRIX' },
+            { name: 'hexagon', pattern: '⬡⬢⬡', description: 'HEXAGON' },
+            { name: 'crystal', pattern: '◊♦◊', description: 'CRYSTAL' },
+            { name: 'circuit', pattern: '┼┿┼', description: 'CIRCUIT' },
+            { name: 'flower', pattern: '✿❀✿', description: 'FLOWER' },
+            { name: 'galaxy', pattern: '✦※✦', description: 'GALAXY' }
+        ];
+        
+        sprites.forEach(sprite => {
+            const item = document.createElement('div');
+            item.className = 'sprite-item';
             
-            this.animationId = requestAnimationFrame(animate);
+            const preview = document.createElement('div');
+            preview.className = 'preview';
+            preview.textContent = sprite.pattern;
+            preview.style.color = this.getRandomColor();
+            
+            const label = document.createElement('div');
+            label.textContent = sprite.description;
+            label.style.color = '#00ff41';
+            
+            item.appendChild(preview);
+            item.appendChild(label);
+            item.dataset.sprite = sprite.name;
+            item.addEventListener('click', () => this.selectSprite(sprite.name, item));
+            library.appendChild(item);
+        });
+    }
+    
+    generatePatternLibrary() {
+        const library = document.getElementById('patternLibrary');
+        const patterns = [
+            { name: 'cybermesh', pattern: '▦▦▦', description: 'CYBER MESH', color: '#00ff41' },
+            { name: 'neuralnet', pattern: '◈◇◈', description: 'NEURAL NET', color: '#ff006e' },
+            { name: 'datamatrix', pattern: '■□■', description: 'DATA MATRIX', color: '#00f5ff' },
+            { name: 'circuitboard', pattern: '┼╋┼', description: 'CIRCUIT BOARD', color: '#ffff00' },
+            { name: 'hexgrid', pattern: '⬢⬡⬢', description: 'HEX GRID', color: '#ff4081' },
+            { name: 'starfield', pattern: '✦✧✦', description: 'STAR FIELD', color: '#9c27b0' }
+        ];
+        
+        patterns.forEach(pattern => {
+            const item = document.createElement('div');
+            item.className = 'sprite-item';
+            
+            const preview = document.createElement('div');
+            preview.className = 'preview';
+            preview.textContent = pattern.pattern;
+            preview.style.color = pattern.color;
+            
+            const label = document.createElement('div');
+            label.textContent = pattern.description;
+            label.style.color = '#ff006e';
+            
+            item.appendChild(preview);
+            item.appendChild(label);
+            item.dataset.pattern = pattern.name;
+            item.addEventListener('click', () => this.selectPattern(pattern.name, item));
+            library.appendChild(item);
+        });
+    }
+    
+    generateColorPicker() {
+        const picker = document.getElementById('colorPicker');
+        const colors = [
+            '#00ff41', '#ff006e', '#00f5ff', '#ffff00',
+            '#ff4081', '#4caf50', '#ff9800', '#9c27b0',
+            '#03dac6', '#607d8b', '#795548', '#e91e63',
+            '#000000', '#ffffff', '#808080', '#ff0000',
+            '#2196f3', '#00bcd4', '#ffc107', '#9e9e9e'
+        ];
+        
+        colors.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.addEventListener('click', () => this.selectColor(color, swatch));
+            picker.appendChild(swatch);
+        });
+        
+        picker.children[0].classList.add('selected');
+    }
+    
+    setupEventListeners() {
+        // Canvas events
+        this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+        this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+        this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+        this.canvas.addEventListener('mouseleave', () => this.stopDrawing());
+        this.canvas.addEventListener('mousemove', (e) => this.updateCoordinates(e));
+        
+        // Tool buttons
+        document.getElementById('paintTool').addEventListener('click', () => this.selectTool('paint'));
+        document.getElementById('eraseTool').addEventListener('click', () => this.selectTool('erase'));
+        document.getElementById('fillTool').addEventListener('click', () => this.selectTool('fill'));
+        document.getElementById('pickTool').addEventListener('click', () => this.selectTool('pick'));
+        document.getElementById('sprayTool').addEventListener('click', () => this.selectTool('spray'));
+        
+        // Brush size buttons
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.setBrushSize(parseInt(e.target.dataset.size), e.target));
+        });
+        
+        // Action buttons
+        document.getElementById('retrowaveBtn').addEventListener('click', () => this.cycleRetrowavePalette());
+        document.getElementById('colorCycleBtn').addEventListener('click', () => this.toggleColorCycling());
+        document.getElementById('recordGifBtn').addEventListener('click', () => this.toggleGifRecording());
+        document.getElementById('randomize').addEventListener('click', () => this.randomizeCanvas());
+        document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
+        document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
+        document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
+    }
+    
+    toggleColorCycling() {
+        this.colorCycling = !this.colorCycling;
+        const btn = document.getElementById('colorCycleBtn');
+        
+        if (this.colorCycling) {
+            // Enable color cycling
+            btn.classList.add('active');
+            btn.style.background = 'linear-gradient(135deg, #ff006e, #00f5ff, #00ff41)';
+            btn.style.animation = 'colorCyclePulse 1s infinite';
+            this.updateModeIndicator('COLOR CYCLE ACTIVE');
+            console.log('🌈 COLOR CYCLE ACTIVATED - CANVAS IS NOW ALIVE!');
+        } else {
+            // Disable color cycling
+            btn.classList.remove('active');
+            btn.style.background = '';
+            btn.style.animation = '';
+            this.updateModeIndicator('COLOR CYCLE DISABLED');
+            console.log('⏹️ COLOR CYCLE DEACTIVATED');
+        }
+    }
+    
+    toggleGifRecording() {
+        if (this.recording) {
+            this.stopGifRecording();
+        } else {
+            this.startGifRecording();
+        }
+    }
+    
+    startGifRecording() {
+        if (typeof GIF === 'undefined') {
+            alert('GIF library not loaded! Please refresh and try again.');
+            return;
+        }
+        
+        this.recording = true;
+        this.recordingFrames = 0;
+        this.recordingStartTime = Date.now();
+        
+        // Initialize GIF encoder
+        this.gif = new GIF({
+            workers: 2,
+            quality: 10,
+            width: this.canvas.width,
+            height: this.canvas.height,
+            workerScript: 'https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js'
+        });
+        
+        // Update button state
+        const btn = document.getElementById('recordGifBtn');
+        btn.classList.add('active');
+        btn.textContent = '⏹ STOP REC';
+        btn.style.background = 'linear-gradient(135deg, #ff0000, #ff4444)';
+        btn.style.animation = 'recordingPulse 0.5s infinite alternate';
+        
+        this.updateModeIndicator('🔴 RECORDING GIF');
+        
+        console.log('🎬 GIF RECORDING STARTED - Capturing epic animation!');
+        console.log(`📹 Will record ${this.maxRecordingFrames} frames for perfect loop`);
+    }
+    
+    stopGifRecording() {
+        if (!this.recording) return;
+        
+        this.recording = false;
+        
+        // Update button state
+        const btn = document.getElementById('recordGifBtn');
+        btn.classList.remove('active');
+        btn.textContent = '⚙ ENCODING...';
+        btn.style.background = 'linear-gradient(135deg, #ff8000, #ffaa00)';
+        btn.style.animation = 'processingPulse 1s infinite';
+        
+        this.updateModeIndicator('⚙️ ENCODING GIF');
+        
+        // Render the GIF
+        this.gif.on('finished', (blob) => {
+            // Download the GIF
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `pixel-forge-animation-${Date.now()}.gif`;
+            link.href = url;
+            link.click();
+            
+            // Reset button
+            btn.textContent = '◉ RECORD GIF';
+            btn.style.background = '';
+            btn.style.animation = '';
+            this.updateModeIndicator('✅ GIF EXPORTED');
+            
+            console.log('🎉 GIF EXPORT COMPLETE!');
+            console.log(`💾 Saved as: ${link.download}`);
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            setTimeout(() => {
+                this.updateModeIndicator('PAINT MODE');
+            }, 2000);
+        });
+        
+        this.gif.render();
+        
+        console.log(`🎬 GIF RECORDING STOPPED - Captured ${this.recordingFrames} frames`);
+        console.log('⚙️ Encoding perfect loop...');
+    }
+    
+    captureGifFrame() {
+        // Only capture every 2nd frame to keep file size reasonable (30fps -> 15fps)
+        if (this.recordingFrames % 2 !== 0) {
+            this.recordingFrames++;
+            return;
+        }
+        
+        // Stop recording after max frames for perfect loop
+        if (this.recordingFrames >= this.maxRecordingFrames) {
+            this.stopGifRecording();
+            return;
+        }
+        
+        // Capture current canvas frame
+        this.gif.addFrame(this.canvas, {
+            delay: 66, // ~15 fps (1000ms/15 = 66ms)
+            copy: true
+        });
+        
+        this.recordingFrames++;
+        
+        // Update progress
+        const progress = Math.floor((this.recordingFrames / this.maxRecordingFrames) * 100);
+        this.updateModeIndicator(`🔴 RECORDING ${progress}%`);
+    }
+    
+    cycleRetrowavePalette() {
+        const palette = this.retrowavePalettes[this.retrowaveIndex];
+        
+        // Update color picker with new palette
+        const picker = document.getElementById('colorPicker');
+        const swatches = picker.children;
+        
+        // Clear current selections
+        Array.from(swatches).forEach(swatch => swatch.classList.remove('selected'));
+        
+        // Update each swatch with new palette colors
+        for (let i = 0; i < Math.min(swatches.length, palette.colors.length); i++) {
+            swatches[i].style.backgroundColor = palette.colors[i];
+        }
+        
+        // Select first color in new palette
+        if (swatches.length > 0) {
+            swatches[0].classList.add('selected');
+            this.currentColor = palette.colors[0];
+        }
+        
+        // Update mode indicator to show current palette
+        this.updateModeIndicator(`${palette.name} PALETTE`);
+        
+        // Add visual feedback - flash the button
+        const btn = document.getElementById('retrowaveBtn');
+        btn.style.background = 'linear-gradient(135deg, #ff006e, #00f5ff)';
+        btn.style.color = '#000';
+        btn.style.boxShadow = '0 0 20px #ff006e';
+        
+        setTimeout(() => {
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.boxShadow = '';
+        }, 300);
+        
+        // Cycle to next palette
+        this.retrowaveIndex = (this.retrowaveIndex + 1) % this.retrowavePalettes.length;
+        
+        console.log(`🌈 RETROWAVE PALETTE: ${palette.name}`);
+        console.log('🎨 Colors:', palette.colors.slice(0, 8).join(', '));
+    }
+    
+    applyColorCycling(x, y, pixel) {
+        // Create different cycling patterns based on position and pixel type
+        const baseIndex = Math.floor(this.cycleTime + x * 0.1 + y * 0.1) % this.retrowaveCycleColors.length;
+        let cycledColor;
+        
+        switch (pixel.type) {
+            case 'quantum':
+            case 'chaos':
+                // Fast rainbow cycling
+                cycledColor = this.retrowaveCycleColors[(baseIndex + Math.floor(this.cycleTime * 4)) % this.retrowaveCycleColors.length];
+                break;
+            case 'strobe':
+            case 'lightning':
+                // Pulse between white and color
+                cycledColor = Math.sin(this.cycleTime * 8) > 0 ? '#ffffff' : this.retrowaveCycleColors[baseIndex];
+                break;
+            case 'energy':
+            case 'nova':
+                // Slow warm cycling
+                const warmColors = ['#ff006e', '#ff4081', '#ff9800', '#ffff00', '#00ff41'];
+                cycledColor = warmColors[Math.floor(this.cycleTime + x + y) % warmColors.length];
+                break;
+            case 'vortex':
+            case 'distort':
+                // Purple-blue cycling
+                const coolColors = ['#8000ff', '#9c27b0', '#00f5ff', '#0080ff'];
+                cycledColor = coolColors[Math.floor(this.cycleTime * 2 + x + y) % coolColors.length];
+                break;
+            case 'spectrum':
+                // Full spectrum cycling
+                cycledColor = this.retrowaveCycleColors[Math.floor(this.cycleTime * 6 + x * 0.5 + y * 0.3) % this.retrowaveCycleColors.length];
+                break;
+            default:
+                // Standard cycling for all other types
+                cycledColor = this.retrowaveCycleColors[(baseIndex + Math.floor(this.cycleTime * 2)) % this.retrowaveCycleColors.length];
+                break;
+        }
+        
+        // Update pixel color and redraw
+        if (pixel.color !== cycledColor) {
+            pixel.color = cycledColor;
+            this.clearPixel(x, y);
+            this.drawPixel(x, y);
+        }
+    }
+    
+    selectPixelType(type, element) {
+        document.querySelectorAll('#pixelLibrary .pixel-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        this.selectedPixelType = type;
+        this.selectedSprite = null;
+        const descriptions = {
+            'quantum': 'QUANTUM DOT',
+            'chaos': 'CHAOS FIELD',
+            'flicker': 'FLICKER STORM',
+            'strobe': 'STROBE PULSE',
+            'static': 'STATIC BURST',
+            'distort': 'REALITY TEAR',
+            'particle': 'PARTICLE FLUX',
+            'lightning': 'LIGHTNING ARC',
+            'temporal': 'TIME RIFT',
+            'nova': 'NOVA BURST',
+            'fractal': 'FRACTAL NOISE',
+            'phantom': 'PHANTOM ECHO',
+            'surge': 'ENERGY SURGE',
+            'cascade': 'CASCADE WAVE',
+            'vortex': 'VOID VORTEX',
+            'spectrum': 'SPECTRUM SHIFT'
+        };
+        this.updateModeIndicator(descriptions[type] || 'PIXEL MODE');
+    }
+    
+    selectSprite(sprite, element) {
+        document.querySelectorAll('#spriteLibrary .sprite-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        document.querySelectorAll('#patternLibrary .sprite-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        this.selectedSprite = sprite;
+        this.selectedPixelType = 'sprite';
+        this.updateModeIndicator('GEOMETRIC MODE');
+    }
+    
+    selectPattern(pattern, element) {
+        document.querySelectorAll('#spriteLibrary .sprite-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        document.querySelectorAll('#patternLibrary .sprite-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        this.selectedSprite = pattern;
+        this.selectedPixelType = 'pattern';
+        const descriptions = {
+            'cybermesh': 'CYBER MESH',
+            'neuralnet': 'NEURAL NETWORK',
+            'datamatrix': 'DATA MATRIX',
+            'circuitboard': 'CIRCUIT BOARD',
+            'hexgrid': 'HEXAGON GRID',
+            'starfield': 'STAR FIELD'
+        };
+        this.updateModeIndicator(descriptions[pattern] || 'BACKGROUND MODE');
+    }
+    
+    selectColor(color, element) {
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        this.currentColor = color;
+    }
+    
+    selectTool(tool) {
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(tool + 'Tool').classList.add('active');
+        this.currentTool = tool;
+        this.updateModeIndicator(tool.toUpperCase() + ' MODE');
+    }
+    
+    updateModeIndicator(mode) {
+        document.getElementById('modeIndicator').textContent = mode;
+    }
+    
+    setBrushSize(size, element) {
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        element.classList.add('active');
+        this.brushSize = size;
+    }
+    
+    getCanvasPosition(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = Math.floor((e.clientX - rect.left) / this.gridSize);
+        const y = Math.floor((e.clientY - rect.top) / this.gridSize);
+        return { x, y };
+    }
+    
+    startDrawing(e) {
+        this.isDrawing = true;
+        this.draw(e);
+    }
+    
+    stopDrawing() {
+        if (this.isDrawing) {
+            // Save canvas state after completing a drawing operation
+            this.saveCanvasState();
+        }
+        this.isDrawing = false;
+    }
+    
+    draw(e) {
+        if (!this.isDrawing && this.currentTool !== 'fill' && this.currentTool !== 'pick') return;
+        
+        const pos = this.getCanvasPosition(e);
+        
+        switch (this.currentTool) {
+            case 'paint':
+                if (this.selectedPixelType === 'sprite') {
+                    this.drawSprite(pos.x, pos.y);
+                } else if (this.selectedPixelType === 'pattern') {
+                    this.drawPattern(pos.x, pos.y);
+                } else {
+                    this.paintPixels(pos.x, pos.y);
+                }
+                break;
+            case 'erase':
+                this.erasePixels(pos.x, pos.y);
+                break;
+            case 'fill':
+                if (this.isDrawing) {
+                    this.floodFill(pos.x, pos.y);
+                    this.saveCanvasState(); // Save state after fill
+                    this.isDrawing = false;
+                }
+                break;
+            case 'pick':
+                if (this.isDrawing) {
+                    this.pickColor(pos.x, pos.y);
+                    this.isDrawing = false;
+                }
+                break;
+            case 'spray':
+                this.sprayPaint(pos.x, pos.y);
+                break;
+        }
+        
+        this.updatePixelCount();
+    }
+    
+    drawPixel(x, y) {
+        const pixel = this.pixels[x][y];
+        if (!pixel) return;
+        
+        this.ctx.fillStyle = pixel.color;
+        this.ctx.strokeStyle = pixel.color;
+        const centerX = x * this.gridSize + this.gridSize / 2;
+        const centerY = y * this.gridSize + this.gridSize / 2;
+        const time = Date.now() * 0.01;
+        const fastTime = Date.now() * 0.02;
+        
+        switch (pixel.type) {
+            case 'quantum':
+                // Original quantum madness - shifting probability cloud
+                for (let i = 0; i < 12; i++) {
+                    const qx = centerX + (Math.random() - 0.5) * this.gridSize * 1.5;
+                    const qy = centerY + (Math.random() - 0.5) * this.gridSize * 1.5;
+                    const alpha = Math.floor(Math.random() * 180 + 75).toString(16);
+                    this.ctx.fillStyle = pixel.color + alpha;
+                    this.ctx.fillRect(qx, qy, Math.random() * 2 + 1, Math.random() * 2 + 1);
+                }
+                break;
+                
+            case 'chaos':
+                // Chaotic particle explosion
+                for (let i = 0; i < 15; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * this.gridSize;
+                    const qx = centerX + Math.cos(angle + time) * radius;
+                    const qy = centerY + Math.sin(angle + time) * radius;
+                    const intensity = Math.floor(Math.random() * 200 + 55).toString(16);
+                    const colors = ['#ff006e', '#00ff41', '#00f5ff'];
+                    this.ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)] + intensity;
+                    this.ctx.fillRect(qx, qy, Math.random() * 3, Math.random() * 3);
+                }
+                break;
+                
+            case 'flicker':
+                // Flickering storm effect
+                const flickerIntensity = Math.sin(fastTime + x + y) > 0.3 ? 1 : 0;
+                if (flickerIntensity) {
+                    for (let i = 0; i < 20; i++) {
+                        const fx = centerX + (Math.random() - 0.5) * this.gridSize * 2;
+                        const fy = centerY + (Math.random() - 0.5) * this.gridSize * 2;
+                        const brightness = Math.random() > 0.7 ? 'ff' : '80';
+                        this.ctx.fillStyle = pixel.color + brightness;
+                        this.ctx.fillRect(fx, fy, 1, 1);
+                    }
+                }
+                break;
+                
+            case 'strobe':
+                // Intense strobing pulses
+                const strobe = Math.floor(fastTime * 4) % 2;
+                if (strobe) {
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+                    for (let i = 0; i < 8; i++) {
+                        const sx = centerX + (Math.random() - 0.5) * this.gridSize * 3;
+                        const sy = centerY + (Math.random() - 0.5) * this.gridSize * 3;
+                        this.ctx.fillStyle = pixel.color;
+                        this.ctx.fillRect(sx, sy, 2, 2);
+                    }
+                }
+                break;
+                
+            case 'static':
+                // TV static burst
+                for (let i = 0; i < 25; i++) {
+                    const sx = x * this.gridSize + Math.random() * this.gridSize;
+                    const sy = y * this.gridSize + Math.random() * this.gridSize;
+                    const grayValue = Math.floor(Math.random() * 255);
+                    this.ctx.fillStyle = `rgb(${grayValue}, ${grayValue}, ${grayValue})`;
+                    this.ctx.fillRect(sx, sy, 1, 1);
+                }
+                // Add color sparks
+                for (let i = 0; i < 5; i++) {
+                    const sx = centerX + (Math.random() - 0.5) * this.gridSize;
+                    const sy = centerY + (Math.random() - 0.5) * this.gridSize;
+                    this.ctx.fillStyle = pixel.color;
+                    this.ctx.fillRect(sx, sy, 2, 2);
+                }
+                break;
+                
+            case 'distort':
+                // Reality distortion field
+                for (let i = 0; i < 10; i++) {
+                    const distortAngle = time + i;
+                    const distortRadius = Math.sin(time * 2 + i) * this.gridSize / 2;
+                    const dx = centerX + Math.cos(distortAngle) * distortRadius;
+                    const dy = centerY + Math.sin(distortAngle) * distortRadius;
+                    const alpha = Math.floor((Math.sin(time + i) * 0.5 + 0.5) * 150 + 50).toString(16);
+                    this.ctx.fillStyle = pixel.color + alpha;
+                    this.ctx.fillRect(dx - 1, dy - 1, 3, 3);
+                }
+                break;
+                
+            case 'particle':
+                // Particle flux field
+                for (let i = 0; i < 8; i++) {
+                    const flow = (time * 20 + i * 45) % 360;
+                    const px = centerX + Math.cos(flow * Math.PI / 180) * this.gridSize / 2;
+                    const py = centerY + Math.sin(flow * Math.PI / 180) * this.gridSize / 2;
+                    const trail = Math.floor((1 - i / 8) * 200).toString(16);
+                    this.ctx.fillStyle = pixel.color + trail;
+                    this.ctx.fillRect(px, py, 2, 2);
+                }
+                break;
+                
+            case 'lightning':
+                // Lightning arc effect
+                const lightningActive = Math.random() > 0.8;
+                if (lightningActive) {
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.beginPath();
+                    let lx = centerX;
+                    let ly = centerY;
+                    for (let i = 0; i < 6; i++) {
+                        lx += (Math.random() - 0.5) * this.gridSize / 2;
+                        ly += (Math.random() - 0.5) * this.gridSize / 2;
+                        this.ctx.lineTo(lx, ly);
+                    }
+                    this.ctx.stroke();
+                    // Add colored sparks
+                    for (let i = 0; i < 5; i++) {
+                        const lsx = centerX + (Math.random() - 0.5) * this.gridSize;
+                        const lsy = centerY + (Math.random() - 0.5) * this.gridSize;
+                        this.ctx.fillStyle = pixel.color;
+                        this.ctx.fillRect(lsx, lsy, 1, 1);
+                    }
+                }
+                break;
+                
+            case 'temporal':
+                // Time rift effect
+                for (let i = 0; i < 6; i++) {
+                    const timeOffset = time + i * 2;
+                    const tx = centerX + Math.sin(timeOffset) * this.gridSize / 3;
+                    const ty = centerY + Math.cos(timeOffset * 1.5) * this.gridSize / 3;
+                    const timeAlpha = Math.floor((Math.sin(timeOffset) * 0.5 + 0.5) * 180 + 75).toString(16);
+                    this.ctx.fillStyle = pixel.color + timeAlpha;
+                    this.ctx.fillRect(tx - 1, ty - 1, 3, 3);
+                }
+                break;
+                
+            case 'nova':
+                // Nova burst effect
+                const novaPhase = Math.sin(time + x + y);
+                if (novaPhase > 0.7) {
+                    // Explosion phase
+                    for (let i = 0; i < 16; i++) {
+                        const angle = (i / 16) * Math.PI * 2;
+                        const radius = (novaPhase - 0.7) * this.gridSize * 4;
+                        const nx = centerX + Math.cos(angle) * radius;
+                        const ny = centerY + Math.sin(angle) * radius;
+                        this.ctx.fillStyle = '#ffffff';
+                        this.ctx.fillRect(nx, ny, 2, 2);
+                    }
+                }
+                // Core particles
+                for (let i = 0; i < 6; i++) {
+                    const nx = centerX + (Math.random() - 0.5) * this.gridSize / 2;
+                    const ny = centerY + (Math.random() - 0.5) * this.gridSize / 2;
+                    this.ctx.fillStyle = pixel.color;
+                    this.ctx.fillRect(nx, ny, 1, 1);
+                }
+                break;
+                
+            case 'fractal':
+                // Fractal noise pattern
+                for (let i = 0; i < 12; i++) {
+                    const scale = Math.pow(0.7, i % 4);
+                    const fx = centerX + Math.sin(time + i) * this.gridSize * scale;
+                    const fy = centerY + Math.cos(time + i * 1.3) * this.gridSize * scale;
+                    const fractalAlpha = Math.floor(scale * 200).toString(16);
+                    this.ctx.fillStyle = pixel.color + fractalAlpha;
+                    this.ctx.fillRect(fx, fy, scale * 3, scale * 3);
+                }
+                break;
+                
+            case 'phantom':
+                // Phantom echo effect
+                for (let echo = 0; echo < 5; echo++) {
+                    const delay = echo * 0.5;
+                    const px = centerX + Math.sin(time - delay) * this.gridSize / 4;
+                    const py = centerY + Math.cos(time - delay) * this.gridSize / 4;
+                    const echoAlpha = Math.floor((1 - echo / 5) * 150).toString(16);
+                    this.ctx.fillStyle = pixel.color + echoAlpha;
+                    this.ctx.fillRect(px - echo, py - echo, 2 + echo, 2 + echo);
+                }
+                break;
+                
+            case 'surge':
+                // Energy surge effect
+                const surge = Math.sin(time * 3 + x + y) * 0.5 + 0.5;
+                for (let i = 0; i < Math.floor(surge * 15) + 5; i++) {
+                    const sx = centerX + (Math.random() - 0.5) * this.gridSize * surge * 2;
+                    const sy = centerY + (Math.random() - 0.5) * this.gridSize * surge * 2;
+                    const surgeAlpha = Math.floor(surge * 255).toString(16);
+                    this.ctx.fillStyle = pixel.color + surgeAlpha;
+                    this.ctx.fillRect(sx, sy, surge * 3, surge * 3);
+                }
+                break;
+                
+            case 'cascade':
+                // Cascade wave effect
+                for (let wave = 0; wave < 4; wave++) {
+                    const waveTime = time + wave;
+                    const amplitude = Math.sin(waveTime) * this.gridSize / 3;
+                    const cx = centerX + amplitude;
+                    const cy = centerY + Math.sin(waveTime * 2) * this.gridSize / 4;
+                    const waveAlpha = Math.floor((1 - wave / 4) * 200).toString(16);
+                    this.ctx.fillStyle = pixel.color + waveAlpha;
+                    this.ctx.fillRect(cx - wave, cy - wave, 2 + wave, 2 + wave);
+                }
+                break;
+                
+            case 'vortex':
+                // Void vortex effect
+                for (let i = 0; i < 10; i++) {
+                    const spiral = time + i * 0.5;
+                    const radius = (i / 10) * this.gridSize;
+                    const vx = centerX + Math.cos(spiral) * radius;
+                    const vy = centerY + Math.sin(spiral) * radius;
+                    const vortexAlpha = Math.floor((1 - i / 10) * 180 + 75).toString(16);
+                    this.ctx.fillStyle = pixel.color + vortexAlpha;
+                    this.ctx.fillRect(vx - 1, vy - 1, 3, 3);
+                }
+                break;
+                
+            case 'spectrum':
+                // Spectrum shift effect
+                const colors = ['#ff0000', '#ff8000', '#ffff00', '#00ff00', '#0080ff', '#0000ff', '#8000ff'];
+                for (let i = 0; i < 8; i++) {
+                    const colorIndex = (Math.floor(time + i) + x + y) % colors.length;
+                    const sx = centerX + (Math.random() - 0.5) * this.gridSize;
+                    const sy = centerY + (Math.random() - 0.5) * this.gridSize;
+                    this.ctx.fillStyle = colors[colorIndex] + 'c0';
+                    this.ctx.fillRect(sx, sy, 2, 2);
+                }
+                break;
+                
+            default:
+                this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+        }
+    }
+    
+    drawSprite(centerX, centerY) {
+        const sprites = {
+            fractal: this.drawFractal,
+            mandala: this.drawMandala,
+            spiral: this.drawSpiral,
+            matrix: this.drawMatrix,
+            hexagon: this.drawHexagon,
+            crystal: this.drawCrystal,
+            circuit: this.drawCircuit,
+            flower: this.drawFlower,
+            galaxy: this.drawGalaxy
         };
         
-        this.animationId = requestAnimationFrame(animate);
-    }
-
-    stopAnimationLoop() {
-        this.isAnimating = false;
-        if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
+        if (sprites[this.selectedSprite]) {
+            sprites[this.selectedSprite].call(this, centerX, centerY);
         }
+        // Save state after placing sprite
+        this.saveCanvasState();
     }
-
-    // QUANTUM EFFECTS - ANIMATED TEXTURES
-    updateQuantumEffects(timestamp) {
-        this.activeEffects.forEach((effect, index) => {
-            if (effect.type === 'quantum') {
-                this.renderQuantumEffect(effect, timestamp);
-            } else if (effect.type === 'chaos') {
-                this.renderChaosEffect(effect, timestamp);
-            } else if (effect.type === 'nova') {
-                this.renderNovaEffect(effect, timestamp);
-            }
-            
-            // Remove expired effects
-            if (effect.life <= 0) {
-                this.activeEffects.splice(index, 1);
-            } else {
-                effect.life -= 0.016;
-            }
-        });
-    }
-
-    renderQuantumEffect(effect, timestamp) {
-        const time = timestamp * 0.001;
-        const centerX = effect.x;
-        const centerY = effect.y;
-        const radius = 20 + Math.sin(time * 2) * 10;
-        
-        for (let angle = 0; angle < Math.PI * 2; angle += 0.2) {
-            const x = centerX + Math.cos(angle + time) * radius;
-            const y = centerY + Math.sin(angle + time) * radius;
-            
-            // Create quantum pixel with shifting colors
-            const hue = (angle * 180 / Math.PI + time * 50) % 360;
-            const color = `hsl(${hue}, 80%, 60%)`;
-            
-            this.setPixel(Math.floor(x), Math.floor(y), color);
-        }
-    }
-
-    renderChaosEffect(effect, timestamp) {
-        const time = timestamp * 0.001;
-        
-        for (let i = 0; i < 5; i++) {
-            const x = effect.x + (Math.random() - 0.5) * 40 * Math.sin(time);
-            const y = effect.y + (Math.random() - 0.5) * 40 * Math.cos(time);
-            
-            // Chaotic color shifting
-            const r = Math.floor(Math.random() * 255);
-            const g = Math.floor(Math.sin(time * 5) * 127 + 128);
-            const b = Math.floor(Math.cos(time * 3) * 127 + 128);
-            
-            this.setPixel(Math.floor(x), Math.floor(y), `rgb(${r}, ${g}, ${b})`);
-        }
-    }
-
-    renderNovaEffect(effect, timestamp) {
-        const time = timestamp * 0.001;
-        const pulseRadius = 15 + Math.sin(time * 4) * 10;
-        
-        // Expanding rings
-        for (let r = 5; r < pulseRadius; r += 3) {
-            const intensity = 1 - (r / pulseRadius);
-            const alpha = intensity * 0.8;
-            
-            for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
-                const x = effect.x + Math.cos(angle) * r;
-                const y = effect.y + Math.sin(angle) * r;
-                
-                const color = `rgba(255, ${Math.floor(intensity * 255)}, 100, ${alpha})`;
-                this.setPixel(Math.floor(x), Math.floor(y), color);
+    
+    drawFractal(centerX, centerY) {
+        const size = Math.min(this.brushSize * 3, 15);
+        for (let i = 0; i < 3; i++) {
+            const radius = size - i * 3;
+            for (let angle = 0; angle < 360; angle += 45) {
+                const rad = (angle * Math.PI) / 180;
+                const x = centerX + Math.cos(rad) * radius;
+                const y = centerY + Math.sin(rad) * radius;
+                this.setPixel(Math.floor(x), Math.floor(y), {
+                    color: this.currentColor,
+                    type: 'surge'
+                });
             }
         }
     }
-
-    // PARTICLE SYSTEMS
-    updateParticleSystems(timestamp) {
-        this.particleSystems.forEach((system, index) => {
-            system.particles.forEach((particle, pIndex) => {
-                // Update particle position
-                particle.x += particle.vx;
-                particle.y += particle.vy;
-                particle.life -= 0.02;
-                
-                // Apply gravity/forces
-                particle.vy += particle.gravity || 0;
-                particle.vx *= 0.99; // Friction
-                
-                // Render particle
-                if (particle.life > 0) {
-                    const alpha = particle.life;
-                    const color = `rgba(${particle.r}, ${particle.g}, ${particle.b}, ${alpha})`;
-                    this.setPixel(Math.floor(particle.x), Math.floor(particle.y), color);
-                } else {
-                    system.particles.splice(pIndex, 1);
-                }
-            });
-            
-            // Remove empty systems
-            if (system.particles.length === 0) {
-                this.particleSystems.splice(index, 1);
+    
+    drawMandala(centerX, centerY) {
+        const size = Math.min(this.brushSize * 2, 12);
+        for (let ring = 0; ring < 3; ring++) {
+            const radius = ring * 3 + 2;
+            for (let angle = 0; angle < 360; angle += 30) {
+                const rad = (angle * Math.PI) / 180;
+                const x = centerX + Math.cos(rad) * radius;
+                const y = centerY + Math.sin(rad) * radius;
+                this.setPixel(Math.floor(x), Math.floor(y), {
+                    color: this.currentColor,
+                    type: 'nova'
+                });
             }
-        });
+        }
     }
-
-    // GEOMETRIC ANIMATIONS
-    updateGeometricAnimations(timestamp) {
-        const time = timestamp * 0.001;
-        
-        this.geometricAnimations.forEach((anim, index) => {
-            if (anim.type === 'spiral') {
-                this.renderAnimatedSpiral(anim, time);
-            } else if (anim.type === 'fractal') {
-                this.renderAnimatedFractal(anim, time);
-            } else if (anim.type === 'mandala') {
-                this.renderAnimatedMandala(anim, time);
-            }
-            
-            anim.life -= 0.016;
-            if (anim.life <= 0) {
-                this.geometricAnimations.splice(index, 1);
-            }
-        });
-    }
-
-    renderAnimatedSpiral(anim, time) {
-        const centerX = anim.x;
-        const centerY = anim.y;
-        const spiralSpeed = time * anim.speed;
-        
-        for (let t = 0; t < 20; t += 0.1) {
-            const angle = t + spiralSpeed;
-            const radius = t * 2;
+    
+    drawSpiral(centerX, centerY) {
+        const size = Math.min(this.brushSize * 4, 20);
+        for (let i = 0; i < size * 8; i++) {
+            const angle = i * 0.5;
+            const radius = i * 0.3;
             const x = centerX + Math.cos(angle) * radius;
             const y = centerY + Math.sin(angle) * radius;
-            
-            const hue = (t * 20 + time * 100) % 360;
-            const color = `hsl(${hue}, 70%, 60%)`;
-            
-            this.setPixel(Math.floor(x), Math.floor(y), color);
+            this.setPixel(Math.floor(x), Math.floor(y), {
+                color: this.currentColor,
+                type: 'vortex'
+            });
         }
     }
-
-    renderAnimatedMandala(anim, time) {
-        const centerX = anim.x;
-        const centerY = anim.y;
-        const petals = 8;
-        
-        for (let i = 0; i < petals; i++) {
-            const baseAngle = (i / petals) * Math.PI * 2;
-            const petalAngle = baseAngle + time * anim.speed;
-            
-            for (let r = 5; r < 25; r += 2) {
-                const wave = Math.sin(r * 0.3 + time * 3) * 5;
-                const x = centerX + Math.cos(petalAngle) * (r + wave);
-                const y = centerY + Math.sin(petalAngle) * (r + wave);
-                
-                const hue = (i * 45 + time * 30) % 360;
-                const color = `hsl(${hue}, 80%, 70%)`;
-                
-                this.setPixel(Math.floor(x), Math.floor(y), color);
+    
+    drawMatrix(centerX, centerY) {
+        const size = this.brushSize * 2;
+        for (let x = -size; x <= size; x++) {
+            for (let y = -size; y <= size; y++) {
+                if ((x + y) % 2 === 0) {
+                    this.setPixel(centerX + x, centerY + y, {
+                        color: this.currentColor,
+                        type: 'static'
+                    });
+                }
             }
         }
     }
-
-    // TOUCH TRAIL EFFECTS
-    updateTouchTrails(timestamp) {
-        this.touchTrails.forEach((trail, index) => {
-            trail.points.forEach((point, pIndex) => {
-                point.life -= 0.03;
-                
-                if (point.life > 0) {
-                    this.renderTrailPoint(point, trail.mode);
-                } else {
-                    trail.points.splice(pIndex, 1);
-                }
+    
+    drawHexagon(centerX, centerY) {
+        const size = Math.min(this.brushSize * 2, 8);
+        for (let angle = 0; angle < 360; angle += 60) {
+            const rad = (angle * Math.PI) / 180;
+            for (let r = 1; r <= size; r++) {
+                const x = centerX + Math.cos(rad) * r;
+                const y = centerY + Math.sin(rad) * r;
+                this.setPixel(Math.floor(x), Math.floor(y), {
+                    color: this.currentColor,
+                    type: 'particle'
+                });
+            }
+        }
+    }
+    
+    drawCrystal(centerX, centerY) {
+        const size = this.brushSize * 2;
+        const points = [
+            [0, -size], [size, 0], [0, size], [-size, 0],
+            [size/2, -size/2], [size/2, size/2], [-size/2, size/2], [-size/2, -size/2]
+        ];
+        
+        points.forEach(([dx, dy]) => {
+            this.setPixel(centerX + dx, centerY + dy, {
+                color: this.currentColor,
+                type: 'spectrum'
             });
-            
-            if (trail.points.length === 0) {
-                this.touchTrails.splice(index, 1);
+        });
+    }
+    
+    drawCircuit(centerX, centerY) {
+        const size = this.brushSize * 3;
+        // Draw horizontal and vertical lines
+        for (let i = -size; i <= size; i++) {
+            this.setPixel(centerX + i, centerY, {
+                color: this.currentColor,
+                type: 'lightning'
+            });
+            this.setPixel(centerX, centerY + i, {
+                color: this.currentColor,
+                type: 'lightning'
+            });
+        }
+        // Add junction points
+        this.setPixel(centerX, centerY, {
+            color: this.currentColor,
+            type: 'strobe'
+        });
+    }
+    
+    drawFlower(centerX, centerY) {
+        const size = Math.min(this.brushSize * 2, 6);
+        // Center
+        this.setPixel(centerX, centerY, {
+            color: this.currentColor,
+            type: 'nova'
+        });
+        // Petals
+        for (let angle = 0; angle < 360; angle += 45) {
+            const rad = (angle * Math.PI) / 180;
+            const x = centerX + Math.cos(rad) * size;
+            const y = centerY + Math.sin(rad) * size;
+            this.setPixel(Math.floor(x), Math.floor(y), {
+                color: this.currentColor,
+                type: 'phantom'
+            });
+        }
+    }
+    
+    drawGalaxy(centerX, centerY) {
+        const size = Math.min(this.brushSize * 4, 15);
+        for (let i = 0; i < size * 5; i++) {
+            const angle = i * 0.8 + Math.random() * 0.5;
+            const radius = Math.sqrt(i) * 1.5 + Math.random() * 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            this.setPixel(Math.floor(x), Math.floor(y), {
+                color: this.currentColor,
+                type: 'chaos'
+            });
+        }
+    }
+    
+    drawPattern(centerX, centerY) {
+        const patterns = {
+            cybermesh: this.drawCyberMesh,
+            neuralnet: this.drawNeuralNet,
+            datamatrix: this.drawDataMatrix,
+            circuitboard: this.drawCircuitBoard,
+            hexgrid: this.drawHexGrid,
+            starfield: this.drawStarField
+        };
+        
+        if (patterns[this.selectedSprite]) {
+            patterns[this.selectedSprite].call(this, centerX, centerY);
+        }
+        // Save state after placing pattern
+        this.saveCanvasState();
+    }
+    
+    drawCyberMesh(centerX, centerY) {
+        const size = this.brushSize * 8;
+        const gridSize = 4;
+        
+        for (let x = -size; x <= size; x += gridSize) {
+            for (let y = -size; y <= size; y += gridSize) {
+                const px = centerX + x;
+                const py = centerY + y;
+                
+                this.setPixel(px, py, { color: this.currentColor, type: 'quantum' });
+                
+                if (Math.random() > 0.3) {
+                    for (let i = 1; i < gridSize; i++) {
+                        this.setPixel(px + i, py, { color: this.currentColor + '80', type: 'static' });
+                    }
+                }
+                
+                if (Math.random() > 0.3) {
+                    for (let i = 1; i < gridSize; i++) {
+                        this.setPixel(px, py + i, { color: this.currentColor + '80', type: 'static' });
+                    }
+                }
+                
+                if (Math.random() > 0.7) {
+                    this.setPixel(px + 1, py + 1, { color: '#ffffff', type: 'strobe' });
+                }
+            }
+        }
+    }
+    
+    drawNeuralNet(centerX, centerY) {
+        const size = this.brushSize * 6;
+        const neurons = [];
+        
+        for (let i = 0; i < 15; i++) {
+            neurons.push({
+                x: centerX + (Math.random() - 0.5) * size * 2,
+                y: centerY + (Math.random() - 0.5) * size * 2
+            });
+        }
+        
+        for (let i = 0; i < neurons.length; i++) {
+            for (let j = i + 1; j < neurons.length; j++) {
+                const dist = Math.sqrt(
+                    Math.pow(neurons[i].x - neurons[j].x, 2) + 
+                    Math.pow(neurons[i].y - neurons[j].y, 2)
+                );
+                
+                if (dist < size) {
+                    const steps = Math.floor(dist);
+                    for (let step = 0; step <= steps; step++) {
+                        const t = step / steps;
+                        const x = Math.floor(neurons[i].x + t * (neurons[j].x - neurons[i].x));
+                        const y = Math.floor(neurons[i].y + t * (neurons[j].y - neurons[i].y));
+                        this.setPixel(x, y, { color: this.currentColor + '60', type: 'particle' });
+                    }
+                }
+            }
+        }
+        
+        neurons.forEach(neuron => {
+            this.setPixel(Math.floor(neuron.x), Math.floor(neuron.y), { 
+                color: this.currentColor, 
+                type: 'nova' 
+            });
+            for (let angle = 0; angle < 360; angle += 60) {
+                const rad = angle * Math.PI / 180;
+                const hx = Math.floor(neuron.x + Math.cos(rad) * 2);
+                const hy = Math.floor(neuron.y + Math.sin(rad) * 2);
+                this.setPixel(hx, hy, { color: this.currentColor + '40', type: 'quantum' });
             }
         });
     }
-
-    renderTrailPoint(point, mode) {
-        switch (mode) {
-            case 'GROWING':
-                this.renderGrowingTrail(point);
-                break;
-            case 'EXPLODING':
-                this.renderExplodingTrail(point);
-                break;
-            case 'FLOWING':
-                this.renderFlowingTrail(point);
-                break;
-            case 'LIGHTNING':
-                this.renderLightningTrail(point);
-                break;
+    
+    drawDataMatrix(centerX, centerY) {
+        const size = this.brushSize * 7;
+        const blockSize = 3;
+        
+        for (let x = -size; x <= size; x += blockSize) {
+            for (let y = -size; y <= size; y += blockSize) {
+                const px = centerX + x;
+                const py = centerY + y;
+                const blockType = Math.random();
+                
+                if (blockType > 0.7) {
+                    for (let bx = 0; bx < blockSize; bx++) {
+                        for (let by = 0; by < blockSize; by++) {
+                            this.setPixel(px + bx, py + by, { 
+                                color: this.currentColor, 
+                                type: 'chaos' 
+                            });
+                        }
+                    }
+                } else if (blockType > 0.4) {
+                    for (let i = 0; i < blockSize; i++) {
+                        this.setPixel(px + i, py, { color: this.currentColor, type: 'flicker' });
+                        this.setPixel(px, py + i, { color: this.currentColor, type: 'flicker' });
+                    }
+                } else if (blockType > 0.2) {
+                    this.setPixel(px, py, { color: '#ffffff', type: 'strobe' });
+                    this.setPixel(px + blockSize - 1, py + blockSize - 1, { 
+                        color: '#ffffff', 
+                        type: 'strobe' 
+                    });
+                }
+                
+                if (Math.random() > 0.8) {
+                    const corruptX = px + Math.floor(Math.random() * blockSize);
+                    const corruptY = py + Math.floor(Math.random() * blockSize);
+                    this.setPixel(corruptX, corruptY, { 
+                        color: '#ff0000', 
+                        type: 'lightning' 
+                    });
+                }
+            }
         }
     }
-
-    renderGrowingTrail(point) {
-        const size = (1 - point.life) * 10;
-        const alpha = point.life;
+    
+    drawCircuitBoard(centerX, centerY) {
+        const size = this.brushSize * 8;
+        const traceWidth = 2;
         
-        for (let x = -size; x <= size; x++) {
+        for (let i = -size; i <= size; i += 8) {
+            for (let x = -size; x <= size; x++) {
+                for (let w = 0; w < traceWidth; w++) {
+                    this.setPixel(centerX + x, centerY + i + w, { 
+                        color: this.currentColor, 
+                        type: 'surge' 
+                    });
+                }
+            }
+            
             for (let y = -size; y <= size; y++) {
-                if (x * x + y * y <= size * size) {
-                    const px = Math.floor(point.x + x);
-                    const py = Math.floor(point.y + y);
-                    const color = `rgba(${point.r}, ${point.g}, ${point.b}, ${alpha})`;
-                    this.setPixel(px, py, color);
+                for (let w = 0; w < traceWidth; w++) {
+                    this.setPixel(centerX + i + w, centerY + y, { 
+                        color: this.currentColor, 
+                        type: 'surge' 
+                    });
+                }
+            }
+        }
+        
+        for (let x = -size; x <= size; x += 12) {
+            for (let y = -size; y <= size; y += 12) {
+                const px = centerX + x;
+                const py = centerY + y;
+                const componentType = Math.random();
+                
+                if (componentType > 0.7) {
+                    for (let cx = 0; cx < 6; cx++) {
+                        for (let cy = 0; cy < 4; cy++) {
+                            this.setPixel(px + cx, py + cy, { 
+                                color: '#333333', 
+                                type: 'static' 
+                            });
+                        }
+                    }
+                    for (let pin = 0; pin < 6; pin++) {
+                        this.setPixel(px + pin, py - 1, { color: '#silver', type: 'particle' });
+                        this.setPixel(px + pin, py + 4, { color: '#silver', type: 'particle' });
+                    }
+                } else if (componentType > 0.4) {
+                    this.setPixel(px + 2, py + 2, { color: '#ffff00', type: 'nova' });
+                    for (let angle = 0; angle < 360; angle += 45) {
+                        const rad = angle * Math.PI / 180;
+                        const cx = px + 2 + Math.cos(rad) * 2;
+                        const cy = py + 2 + Math.sin(rad) * 2;
+                        this.setPixel(Math.floor(cx), Math.floor(cy), { 
+                            color: '#ffff00', 
+                            type: 'temporal' 
+                        });
+                    }
+                } else {
+                    for (let rx = 0; rx < 4; rx++) {
+                        this.setPixel(px + rx, py + 1, { 
+                            color: rx % 2 ? '#ff0000' : '#0000ff', 
+                            type: 'phantom' 
+                        });
+                    }
+                }
+            }
+        }
+        
+        for (let x = -size; x <= size; x += 6) {
+            for (let y = -size; y <= size; y += 6) {
+                if (Math.random() > 0.6) {
+                    this.setPixel(centerX + x, centerY + y, { 
+                        color: '#silver', 
+                        type: 'vortex' 
+                    });
                 }
             }
         }
     }
-
-    renderExplodingTrail(point) {
-        const count = 8;
-        const radius = (1 - point.life) * 20;
+    
+    drawHexGrid(centerX, centerY) {
+        const size = this.brushSize * 6;
+        const hexRadius = 4;
         
-        for (let i = 0; i < count; i++) {
-            const angle = (i / count) * Math.PI * 2;
-            const x = point.x + Math.cos(angle) * radius;
-            const y = point.y + Math.sin(angle) * radius;
-            
-            this.setPixel(Math.floor(x), Math.floor(y), 
-                `rgba(${point.r}, ${point.g}, ${point.b}, ${point.life})`);
-        }
-    }
-
-    initializeCanvas() {
-        console.log('📐 Initializing canvas...');
-        this.ctx.imageSmoothingEnabled = false;
-        if (this.gridCtx) {
-            this.gridCtx.imageSmoothingEnabled = false;
-        }
-        
-        // Set initial canvas size
-        this.resizeCanvas();
-        
-        // Save initial state
-        this.history.saveState();
-        
-        console.log('✅ Canvas initialized');
-    }
-
-    resizeCanvas() {
-        const container = this.canvas.parentElement;
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        
-        this.canvas.width = containerWidth;
-        this.canvas.height = containerHeight;
-        
-        if (this.gridCanvas) {
-            this.gridCanvas.width = containerWidth;
-            this.gridCanvas.height = containerHeight;
-        }
-        
-        this.drawGrid();
-    }
-
-    setupEventListeners() {
-        console.log('🔗 Setting up event listeners...');
-        
-        try {
-            // Canvas mouse events
-            this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
-            this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
-            this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
-            this.canvas.addEventListener('mouseleave', (e) => this.onMouseUp(e));
-
-            // Canvas touch events for mobile
-            this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e));
-            this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e));
-            this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e));
-
-            // Tool buttons
-            const toolButtons = [
-                { id: 'paintTool', tool: 'paint' },
-                { id: 'eraseTool', tool: 'erase' },
-                { id: 'fillTool', tool: 'fill' },
-                { id: 'pickTool', tool: 'sample' },
-                { id: 'sprayTool', tool: 'spray' }
-            ];
-
-            toolButtons.forEach(({ id, tool }) => {
-                const button = document.getElementById(id);
-                if (button) {
-                    button.addEventListener('click', () => this.setTool(tool));
+        for (let row = -size / 6; row <= size / 6; row++) {
+            for (let col = -size / 6; col <= size / 6; col++) {
+                const hexX = centerX + col * hexRadius * 1.5;
+                const hexY = centerY + row * hexRadius * Math.sqrt(3) + (col % 2) * hexRadius * Math.sqrt(3) / 2;
+                
+                for (let side = 0; side < 6; side++) {
+                    const angle1 = (side * 60) * Math.PI / 180;
+                    const angle2 = ((side + 1) * 60) * Math.PI / 180;
+                    
+                    const x1 = hexX + Math.cos(angle1) * hexRadius;
+                    const y1 = hexY + Math.sin(angle1) * hexRadius;
+                    const x2 = hexX + Math.cos(angle2) * hexRadius;
+                    const y2 = hexY + Math.sin(angle2) * hexRadius;
+                    
+                    const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+                    for (let step = 0; step <= steps; step++) {
+                        const t = step / steps;
+                        const x = Math.floor(x1 + t * (x2 - x1));
+                        const y = Math.floor(y1 + t * (y2 - y1));
+                        this.setPixel(x, y, { color: this.currentColor, type: 'cascade' });
+                    }
                 }
-            });
-
-            // Action buttons
-            const actionButtons = [
-                { id: 'undoBtn', action: () => this.undo() },
-                { id: 'redoBtn', action: () => this.redo() },
-                { id: 'randomize', action: () => this.epicRandomize() },
-                { id: 'clearCanvas', action: () => this.clearCanvas() },
-                { id: 'recordGifBtn', action: () => this.toggleGifRecording() },
-                { id: 'saveBtn', action: () => this.saveImage() },
-                { id: 'gridToggle', action: () => this.toggleGrid() }
-            ];
-
-            actionButtons.forEach(({ id, action }) => {
-                const button = document.getElementById(id);
-                if (button) {
-                    button.addEventListener('click', action);
+                
+                const centerType = Math.random();
+                if (centerType > 0.8) {
+                    this.setPixel(Math.floor(hexX), Math.floor(hexY), { 
+                        color: '#ffffff', 
+                        type: 'nova' 
+                    });
+                } else if (centerType > 0.6) {
+                    this.setPixel(Math.floor(hexX), Math.floor(hexY), { 
+                        color: this.currentColor, 
+                        type: 'spectrum' 
+                    });
                 }
-            });
-
-            // Brush size controls
-            const brushSizeButtons = document.querySelectorAll('.brush-size-btn');
-            brushSizeButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const size = parseInt(button.dataset.size);
-                    this.setBrushSize(size);
-                });
-            });
-
-            // Color picker
-            const colorPicker = document.getElementById('colorPicker');
-            if (colorPicker) {
-                colorPicker.addEventListener('change', (e) => {
-                    this.setColor(e.target.value);
-                });
+                
+                if (Math.random() > 0.7) {
+                    for (let fx = -hexRadius / 2; fx <= hexRadius / 2; fx++) {
+                        for (let fy = -hexRadius / 2; fy <= hexRadius / 2; fy++) {
+                            if (fx * fx + fy * fy <= (hexRadius / 2) * (hexRadius / 2)) {
+                                this.setPixel(Math.floor(hexX + fx), Math.floor(hexY + fy), { 
+                                    color: this.currentColor + '40', 
+                                    type: 'distort' 
+                                });
+                            }
+                        }
+                    }
+                }
             }
-
-            // Story Mode button - conditional
-            const storyModeBtn = document.getElementById('storyModeBtn');
-            if (storyModeBtn) {
-                storyModeBtn.addEventListener('click', () => this.launchStoryMode());
-            }
-
-            // Keyboard shortcuts
-            document.addEventListener('keydown', (e) => this.onKeyDown(e));
-
-            // Window resize
-            window.addEventListener('resize', () => this.resizeCanvas());
-
-            console.log('✅ Event listeners set up successfully');
+        }
+    }
+    
+    drawStarField(centerX, centerY) {
+        const size = this.brushSize * 10;
+        const numStars = 50;
+        
+        for (let i = 0; i < numStars; i++) {
+            const starX = centerX + (Math.random() - 0.5) * size * 2;
+            const starY = centerY + (Math.random() - 0.5) * size * 2;
+            const starType = Math.random();
             
-        } catch (error) {
-            console.error('❌ Error setting up event listeners:', error);
-        }
-    }
-
-    // Generate all UI elements
-    generateAllUI() {
-        console.log('🎨 Generating all UI elements...');
-        
-        try {
-            this.generatePixelLibrary();
-            this.generateSpriteLibrary();
-            this.generatePatternLibrary();
-            this.generateColorPicker();
-            
-            console.log('✅ All UI elements generated successfully');
-        } catch (error) {
-            console.error('❌ Error generating UI:', error);
-        }
-    }
-
-    generatePixelLibrary() {
-        console.log('🔥 generatePixelLibrary() called');
-        const container = document.getElementById('pixelLibrary');
-        if (!container) {
-            console.error('❌ pixelLibrary container not found');
-            return;
-        }
-
-        const pixelTypes = [
-            { name: 'Quantum', id: 'quantum', effect: 'quantum-shimmer' },
-            { name: 'Chaos', id: 'chaos', effect: 'chaos-flicker' },
-            { name: 'Nova', id: 'nova', effect: 'nova-pulse' },
-            { name: 'Void', id: 'void', effect: 'void-absorb' },
-            { name: 'Plasma', id: 'plasma', effect: 'plasma-flow' },
-            { name: 'Crystal', id: 'crystal', effect: 'crystal-refract' },
-            { name: 'Neon', id: 'neon', effect: 'neon-glow' },
-            { name: 'Hologram', id: 'hologram', effect: 'hologram-shift' },
-            { name: 'Fractal', id: 'fractal', effect: 'fractal-zoom' },
-            { name: 'Laser', id: 'laser', effect: 'laser-beam' },
-            { name: 'Particle', id: 'particle', effect: 'particle-burst' },
-            { name: 'Energy', id: 'energy', effect: 'energy-crackle' },
-            { name: 'Matrix', id: 'matrix', effect: 'matrix-rain' },
-            { name: 'Cyber', id: 'cyber', effect: 'cyber-grid' },
-            { name: 'Digital', id: 'digital', effect: 'digital-noise' },
-            { name: 'Glitch', id: 'glitch', effect: 'glitch-corrupt' }
-        ];
-
-        container.innerHTML = pixelTypes.map(type => 
-            `<div class="pixel-type-btn ${type.effect}" data-type="${type.id}" onclick="pixelBuilder.selectPixelType('${type.id}')">
-                ${type.name}
-            </div>`
-        ).join('');
-
-        console.log(`✅ Added ${pixelTypes.length} pixel types to pixelLibrary`);
-    }
-
-    generateSpriteLibrary() {
-        console.log('🎮 generateSpriteLibrary() called');
-        const container = document.getElementById('spriteLibrary');
-        if (!container) {
-            console.error('❌ spriteLibrary container not found');
-            return;
-        }
-
-        const sprites = [
-            { name: 'Spiral Galaxy', id: 'spiral', symbol: '🌀' },
-            { name: 'Nebula Cloud', id: 'nebula', symbol: '☁️' },
-            { name: 'Star Burst', id: 'starburst', symbol: '✨' },
-            { name: 'Black Hole', id: 'blackhole', symbol: '🕳️' },
-            { name: 'Comet', id: 'comet', symbol: '☄️' },
-            { name: 'Solar Flare', id: 'flare', symbol: '🔥' },
-            { name: 'Ring System', id: 'rings', symbol: '⭕' },
-            { name: 'Wormhole', id: 'wormhole', symbol: '🌀' },
-            { name: 'Pulsar', id: 'pulsar', symbol: '💫' }
-        ];
-
-        container.innerHTML = sprites.map(sprite => 
-            `<div class="sprite-btn" data-sprite="${sprite.id}" onclick="pixelBuilder.selectSprite('${sprite.id}')">
-                <span class="sprite-icon">${sprite.symbol}</span>
-                <span class="sprite-name">${sprite.name}</span>
-            </div>`
-        ).join('');
-
-        console.log(`✅ Added ${sprites.length} sprites to spriteLibrary`);
-    }
-
-    generatePatternLibrary() {
-        console.log('🔮 generatePatternLibrary() called');
-        const container = document.getElementById('patternLibrary');
-        if (!container) {
-            console.error('❌ patternLibrary container not found');
-            return;
-        }
-
-        const patterns = [
-            { name: 'Cyber Mesh', id: 'cybermesh', style: 'pattern-cyber' },
-            { name: 'Neural Net', id: 'neural', style: 'pattern-neural' },
-            { name: 'Data Stream', id: 'datastream', style: 'pattern-data' },
-            { name: 'Circuit Board', id: 'circuit', style: 'pattern-circuit' },
-            { name: 'Hex Grid', id: 'hexgrid', style: 'pattern-hex' },
-            { name: 'Wave Form', id: 'waveform', style: 'pattern-wave' }
-        ];
-
-        container.innerHTML = patterns.map(pattern => 
-            `<div class="pattern-btn ${pattern.style}" data-pattern="${pattern.id}" onclick="pixelBuilder.selectPattern('${pattern.id}')">
-                ${pattern.name}
-            </div>`
-        ).join('');
-
-        console.log(`✅ Added ${patterns.length} patterns to patternLibrary`);
-    }
-
-    generateColorPicker() {
-        console.log('🎨 generateColorPicker() called');
-        const container = document.getElementById('colorPicker');
-        if (!container) {
-            console.error('❌ colorPicker container not found');
-            return;
-        }
-
-        const colors = [
-            '#ff00ff', '#00ffff', '#ffff00', '#ff0080',
-            '#8000ff', '#0080ff', '#ff8000', '#80ff00',
-            '#ff0040', '#4000ff', '#00ff80', '#ff4000',
-            '#0040ff', '#80ff40', '#ff0020', '#2000ff',
-            '#00ff40', '#ff2000', '#0020ff', '#40ff80'
-        ];
-
-        const colorSwatches = colors.map(color => 
-            `<div class="color-swatch" style="background-color: ${color}" 
-                  data-color="${color}" onclick="pixelBuilder.selectColor('${color}')"></div>`
-        ).join('');
-
-        container.innerHTML = `<div class="color-swatches">${colorSwatches}</div>`;
-        console.log(`✅ Added ${colors.length} color swatches to colorPicker`);
-    }
-
-    // Selection methods
-    selectPixelType(type) {
-        this.currentPixelType = type;
-        console.log(`🎯 Selected pixel type: ${type}`);
-        
-        // Add visual feedback
-        document.querySelectorAll('.pixel-type-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-type="${type}"]`)?.classList.add('active');
-    }
-
-    selectSprite(sprite) {
-        this.currentSprite = sprite;
-        console.log(`🎮 Selected sprite: ${sprite}`);
-        
-        document.querySelectorAll('.sprite-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-sprite="${sprite}"]`)?.classList.add('active');
-    }
-
-    selectPattern(pattern) {
-        this.currentPattern = pattern;
-        console.log(`🔮 Selected pattern: ${pattern}`);
-        
-        document.querySelectorAll('.pattern-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-pattern="${pattern}"]`)?.classList.add('active');
-    }
-
-    selectColor(color) {
-        this.currentColor = color;
-        console.log(`🎨 Selected color: ${color}`);
-        
-        document.querySelectorAll('.color-swatch').forEach(swatch => swatch.classList.remove('active'));
-        document.querySelector(`[data-color="${color}"]`)?.classList.add('active');
-    }
-
-    // EPIC RANDOMIZE WITH ANIMATIONS!
-    epicRandomize() {
-        console.log('🎲 EPIC RANDOMIZE ACTIVATED!');
-        
-        // Save state before randomizing
-        this.history.saveState();
-        
-        // Clear existing effects
-        this.activeEffects = [];
-        this.particleSystems = [];
-        this.geometricAnimations = [];
-        
-        // Create random animated effects across the canvas
-        const effectCount = 20 + Math.random() * 30;
-        
-        for (let i = 0; i < effectCount; i++) {
-            const x = Math.random() * this.canvas.width;
-            const y = Math.random() * this.canvas.height;
-            const effectType = Math.random();
-            
-            if (effectType < 0.3) {
-                // Quantum effect
-                this.activeEffects.push({
-                    type: 'quantum',
-                    x: x,
-                    y: y,
-                    life: 3 + Math.random() * 2
+            if (starType > 0.9) {
+                this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                    color: '#ffffff', 
+                    type: 'nova' 
                 });
-            } else if (effectType < 0.6) {
-                // Geometric animation
-                this.geometricAnimations.push({
-                    type: Math.random() < 0.5 ? 'spiral' : 'mandala',
-                    x: x,
-                    y: y,
-                    speed: 0.5 + Math.random(),
-                    life: 4 + Math.random() * 3
+                for (let ray = 0; ray < 8; ray++) {
+                    const angle = (ray * 45) * Math.PI / 180;
+                    for (let r = 1; r <= 6; r++) {
+                        const rx = starX + Math.cos(angle) * r;
+                        const ry = starY + Math.sin(angle) * r;
+                        this.setPixel(Math.floor(rx), Math.floor(ry), { 
+                            color: this.currentColor + '80', 
+                            type: 'lightning' 
+                        });
+                    }
+                }
+            } else if (starType > 0.7) {
+                this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                    color: this.currentColor, 
+                    type: 'strobe' 
+                });
+                this.setPixel(Math.floor(starX - 2), Math.floor(starY), { 
+                    color: this.currentColor + '60', 
+                    type: 'phantom' 
+                });
+                this.setPixel(Math.floor(starX + 2), Math.floor(starY), { 
+                    color: this.currentColor + '60', 
+                    type: 'phantom' 
+                });
+                this.setPixel(Math.floor(starX), Math.floor(starY - 2), { 
+                    color: this.currentColor + '60', 
+                    type: 'phantom' 
+                });
+                this.setPixel(Math.floor(starX), Math.floor(starY + 2), { 
+                    color: this.currentColor + '60', 
+                    type: 'phantom' 
+                });
+            } else if (starType > 0.4) {
+                this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                    color: this.currentColor, 
+                    type: 'surge' 
                 });
             } else {
-                // Particle system
-                this.createParticleSystem(x, y);
+                this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                    color: this.currentColor + '80', 
+                    type: 'quantum' 
+                });
             }
         }
         
-        // Add some chaos effects
-        for (let i = 0; i < 10; i++) {
-            this.activeEffects.push({
-                type: 'chaos',
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                life: 2 + Math.random() * 3
+        for (let cloud = 0; cloud < 5; cloud++) {
+            const cloudX = centerX + (Math.random() - 0.5) * size;
+            const cloudY = centerY + (Math.random() - 0.5) * size;
+            const cloudSize = Math.random() * 8 + 4;
+            
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * cloudSize;
+                const px = cloudX + Math.cos(angle) * radius;
+                const py = cloudY + Math.sin(angle) * radius;
+                
+                this.setPixel(Math.floor(px), Math.floor(py), { 
+                    color: ['#ff69b4', '#9370db', '#00ced1'][cloud % 3] + '40', 
+                    type: 'fractal' 
+                });
+            }
+        }
+    }
+    
+    setPixel(x, y, pixel) {
+        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+            this.pixels[x][y] = pixel;
+            this.drawPixel(x, y);
+        }
+    }
+    
+    sprayPaint(centerX, centerY) {
+        const size = this.brushSize;
+        for (let i = 0; i < size * 2; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * size;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            this.setPixel(Math.floor(x), Math.floor(y), {
+                color: this.currentColor,
+                type: this.selectedPixelType
             });
         }
-        
-        console.log(`🌪️ Created ${effectCount} animated effects!`);
-        this.performanceMonitor.addEffect();
     }
-
-    createParticleSystem(x, y) {
-        const particleCount = 20 + Math.random() * 30;
-        const particles = [];
-        
-        for (let i = 0; i < particleCount; i++) {
-            particles.push({
-                x: x,
-                y: y,
-                vx: (Math.random() - 0.5) * 4,
-                vy: (Math.random() - 0.5) * 4,
-                r: Math.floor(Math.random() * 255),
-                g: Math.floor(Math.random() * 255),
-                b: Math.floor(Math.random() * 255),
-                life: 1 + Math.random(),
-                gravity: Math.random() * 0.1
-            });
-        }
-        
-        this.particleSystems.push({ particles });
-    }
-
-    // Touch events for mobile magic
-    onTouchStart(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const rect = this.canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        this.isDrawing = true;
-        this.lastPos = { x, y };
-        
-        // Create touch trail
-        this.createTouchTrail(x, y, 'fast');
-    }
-
-    onTouchMove(e) {
-        e.preventDefault();
-        if (!this.isDrawing) return;
-        
-        const touch = e.touches[0];
-        const rect = this.canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
-        
-        // Calculate speed for effect intensity
-        const dx = x - this.lastPos.x;
-        const dy = y - this.lastPos.y;
-        const speed = Math.sqrt(dx * dx + dy * dy);
-        
-        // Create trail based on speed
-        const intensity = speed > 10 ? 'lightning' : speed > 5 ? 'flowing' : 'growing';
-        this.createTouchTrail(x, y, intensity);
-        
-        this.lastPos = { x, y };
-    }
-
-    onTouchEnd(e) {
-        e.preventDefault();
-        this.isDrawing = false;
-        
-        // Create explosion effect at end point
-        if (this.lastPos) {
-            this.createTouchTrail(this.lastPos.x, this.lastPos.y, 'exploding');
+    
+    paintPixels(centerX, centerY) {
+        const half = Math.floor(this.brushSize / 2);
+        for (let x = centerX - half; x <= centerX + half; x++) {
+            for (let y = centerY - half; y <= centerY + half; y++) {
+                this.setPixel(x, y, {
+                    color: this.currentColor,
+                    type: this.selectedPixelType
+                });
+            }
         }
     }
-
-    createTouchTrail(x, y, mode) {
-        const trail = {
-            mode: mode.toUpperCase(),
-            points: []
+    
+    erasePixels(centerX, centerY) {
+        const half = Math.floor(this.brushSize / 2);
+        for (let x = centerX - half; x <= centerX + half; x++) {
+            for (let y = centerY - half; y <= centerY + half; y++) {
+                if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                    this.pixels[x][y] = null;
+                    this.clearPixel(x, y);
+                }
+            }
+        }
+    }
+    
+    floodFill(startX, startY) {
+        const targetPixel = this.pixels[startX][startY];
+        const newPixel = {
+            color: this.currentColor,
+            type: this.selectedPixelType
         };
         
-        // Add trail points
-        for (let i = 0; i < 5; i++) {
-            trail.points.push({
-                x: x + (Math.random() - 0.5) * 10,
-                y: y + (Math.random() - 0.5) * 10,
-                r: Math.floor(Math.random() * 255),
-                g: Math.floor(Math.random() * 255),
-                b: Math.floor(Math.random() * 255),
-                life: 1
+        if (this.pixelsEqual(targetPixel, newPixel)) return;
+        
+        const stack = [[startX, startY]];
+        
+        while (stack.length > 0) {
+            const [x, y] = stack.pop();
+            
+            if (x < 0 || x >= this.gridWidth || y < 0 || y >= this.gridHeight) continue;
+            if (!this.pixelsEqual(this.pixels[x][y], targetPixel)) continue;
+            
+            this.pixels[x][y] = newPixel;
+            this.drawPixel(x, y);
+            
+            stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+        }
+    }
+    
+    pickColor(x, y) {
+        const pixel = this.pixels[x][y];
+        if (pixel) {
+            this.currentColor = pixel.color;
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.classList.remove('selected');
+                if (this.rgbToHex(swatch.style.backgroundColor) === pixel.color) {
+                    swatch.classList.add('selected');
+                }
             });
         }
-        
-        this.touchTrails.push(trail);
     }
-
-    // Mouse events
-    onMouseDown(e) {
-        this.isDrawing = true;
-        const pos = this.getMousePos(e);
-        this.lastPos = pos;
-        
-        if (this.currentTool === 'paint') {
-            this.setPixel(pos.x, pos.y, this.currentColor);
-        } else if (this.currentTool === 'sample') {
-            this.sampleColor(pos.x, pos.y);
-        }
+    
+    rgbToHex(rgb) {
+        const result = rgb.match(/\d+/g);
+        if (!result) return rgb;
+        return "#" + ((1 << 24) + (parseInt(result[0]) << 16) + (parseInt(result[1]) << 8) + parseInt(result[2])).toString(16).slice(1);
     }
-
-    onMouseMove(e) {
-        if (!this.isDrawing) return;
-        
-        const pos = this.getMousePos(e);
-        this.updateCoordinates(pos.x, pos.y);
-        
-        if (this.currentTool === 'paint') {
-            this.drawLine(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
-        } else if (this.currentTool === 'erase') {
-            this.eraseLine(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
-        }
-        
-        this.lastPos = pos;
+    
+    pixelsEqual(pixel1, pixel2) {
+        if (pixel1 === null && pixel2 === null) return true;
+        if (pixel1 === null || pixel2 === null) return false;
+        return pixel1.color === pixel2.color && pixel1.type === pixel2.type;
     }
-
-    onMouseUp(e) {
-        if (this.isDrawing) {
-            this.isDrawing = false;
-            this.history.saveState();
-        }
+    
+    clearPixel(x, y) {
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+        this.ctx.globalAlpha = 1;
+        this.ctx.lineWidth = 1;
     }
-
-    getMousePos(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        return {
-            x: Math.floor((e.clientX - rect.left) / this.pixelSize),
-            y: Math.floor((e.clientY - rect.top) / this.pixelSize)
-        };
+    
+    isAnimatedPixelType(type) {
+        const animatedTypes = [
+            'quantum', 'chaos', 'flicker', 'strobe', 'static', 'distort', 
+            'particle', 'lightning', 'temporal', 'nova', 'fractal', 
+            'phantom', 'surge', 'cascade', 'vortex', 'spectrum'
+        ];
+        return animatedTypes.includes(type);
     }
-
-    setPixel(x, y, color) {
-        if (x < 0 || y < 0 || x >= this.canvas.width/this.pixelSize || y >= this.canvas.height/this.pixelSize) {
+    
+    getRandomColor() {
+        const colors = ['#00ff41', '#ff006e', '#00f5ff', '#ffff00', '#ff4081', '#4caf50'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    drawGrid() {
+        if (!this.showGrid) {
+            this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
             return;
         }
         
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x * this.pixelSize, y * this.pixelSize, this.pixelSize, this.pixelSize);
-        this.performanceMonitor.addPixels(1);
-    }
-
-    drawLine(x0, y0, x1, y1) {
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
-        let err = dx - dy;
-
-        while (true) {
-            for (let bx = 0; bx < this.brushSize; bx++) {
-                for (let by = 0; by < this.brushSize; by++) {
-                    this.setPixel(x0 + bx, y0 + by, this.currentColor);
-                }
-            }
-
-            if (x0 === x1 && y0 === y1) break;
-            const e2 = 2 * err;
-            if (e2 > -dy) { err -= dy; x0 += sx; }
-            if (e2 < dx) { err += dx; y0 += sy; }
+        this.gridCtx.strokeStyle = '#00ff41';
+        this.gridCtx.lineWidth = 0.5;
+        this.gridCtx.globalAlpha = 0.15;
+        
+        for (let x = 0; x <= this.canvas.width; x += this.gridSize) {
+            this.gridCtx.beginPath();
+            this.gridCtx.moveTo(x, 0);
+            this.gridCtx.lineTo(x, this.canvas.height);
+            this.gridCtx.stroke();
+        }
+        
+        for (let y = 0; y <= this.canvas.height; y += this.gridSize) {
+            this.gridCtx.beginPath();
+            this.gridCtx.moveTo(0, y);
+            this.gridCtx.lineTo(this.canvas.width, y);
+            this.gridCtx.stroke();
         }
     }
-
-    eraseLine(x0, y0, x1, y1) {
-        this.drawLine(x0, y0, x1, y1); // Use transparent for erasing
-        // Note: Implement proper erasing logic here
-    }
-
-    // Tool and brush methods
-    setTool(tool) {
-        this.currentTool = tool;
-        this.updateToolUI();
-        console.log(`🔧 Tool changed to: ${tool}`);
-    }
-
-    setBrushSize(size) {
-        this.brushSize = size;
-        this.updateBrushSizeUI();
-        console.log(`🖌️ Brush size changed to: ${size}`);
-    }
-
-    setColor(color) {
-        this.currentColor = color;
-        console.log(`🎨 Color changed to: ${color}`);
-    }
-
-    updateToolUI() {
-        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`${this.currentTool}Tool`)?.classList.add('active');
-    }
-
-    updateBrushSizeUI() {
-        document.querySelectorAll('.brush-size-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-size="${this.brushSize}"]`)?.classList.add('active');
-    }
-
-    updateCoordinates(x, y) {
-        const coordsElement = document.getElementById('coordinates');
-        if (coordsElement) {
-            coordsElement.textContent = `${x}, ${y}`;
-        }
-    }
-
-    // Canvas operations
-    clearCanvas() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.history.saveState();
-        this.performanceMonitor.reset();
-        
-        // Clear all effects
-        this.activeEffects = [];
-        this.particleSystems = [];
-        this.geometricAnimations = [];
-        this.touchTrails = [];
-        
-        console.log('🧹 Canvas cleared');
-    }
-
+    
     toggleGrid() {
-        this.gridVisible = !this.gridVisible;
+        this.showGrid = !this.showGrid;
         this.drawGrid();
-        console.log(`📐 Grid ${this.gridVisible ? 'shown' : 'hidden'}`);
     }
-
-    drawGrid() {
-        if (!this.gridCtx) return;
-        
-        this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
-        
-        if (this.gridVisible) {
-            this.gridCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            this.gridCtx.lineWidth = 1;
-            
-            for (let x = 0; x < this.gridCanvas.width; x += this.pixelSize) {
-                this.gridCtx.beginPath();
-                this.gridCtx.moveTo(x, 0);
-                this.gridCtx.lineTo(x, this.gridCanvas.height);
-                this.gridCtx.stroke();
-            }
-            
-            for (let y = 0; y < this.gridCanvas.height; y += this.pixelSize) {
-                this.gridCtx.beginPath();
-                this.gridCtx.moveTo(0, y);
-                this.gridCtx.lineTo(this.gridCanvas.width, y);
-                this.gridCtx.stroke();
-            }
-        }
+    
+    clearCanvas() {
+        this.ctx.fillStyle = '#000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
+        this.canvasHistory.clear(); // Clear history when canvas is cleared
+        this.updatePixelCount();
     }
-
-    // History operations
-    undo() {
-        if (this.history.undo()) {
-            console.log('↶ Undo performed');
-        }
-    }
-
-    redo() {
-        if (this.history.redo()) {
-            console.log('↷ Redo performed');
-        }
-    }
-
-    // Story Mode integration
-    launchStoryMode() {
-        console.log('🌌 Launching Story Mode...');
-        
-        // Update mode indicator if it exists
-        const modeIndicator = document.getElementById('modeIndicator');
-        if (modeIndicator) {
-            modeIndicator.textContent = '🌌 LAUNCHING COSMIC STORYTELLER';
-        }
-        
-        // Create cosmic transition effect
-        this.createCosmicTransition();
-        
-        // Navigate to storyteller after animation
-        setTimeout(() => {
-            window.location.href = '/storyteller';
-        }, 1500);
-    }
-
-    createCosmicTransition() {
-        // Create expanding cosmic rings
-        for (let i = 0; i < 5; i++) {
-            setTimeout(() => {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
-                
-                this.activeEffects.push({
-                    type: 'nova',
-                    x: centerX,
-                    y: centerY,
-                    life: 1.5
-                });
-            }, i * 200);
-        }
-    }
-
-    // Utility methods
+    
     saveImage() {
         const link = document.createElement('a');
-        link.download = `pixel-art-${Date.now()}.png`;
+        link.download = 'pixel-forge-creation.png';
         link.href = this.canvas.toDataURL();
         link.click();
-        console.log('💾 Image saved');
     }
-
-    sampleColor(x, y) {
-        const imageData = this.ctx.getImageData(x * this.pixelSize, y * this.pixelSize, 1, 1);
-        const [r, g, b] = imageData.data;
-        const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-        this.setColor(hex);
-        console.log(`🎨 Sampled color: ${hex}`);
+    
+    updateCoordinates(e) {
+        const pos = this.getCanvasPosition(e);
+        document.getElementById('coords').textContent = `${pos.x}, ${pos.y}`;
     }
-
-    onKeyDown(e) {
-        // Keyboard shortcuts
-        if (e.ctrlKey || e.metaKey) {
-            switch (e.key) {
-                case 'z':
-                    e.preventDefault();
-                    if (e.shiftKey) {
-                        this.redo();
-                    } else {
-                        this.undo();
+    
+    updatePixelCount() {
+        let count = 0;
+        for (let x = 0; x < this.gridWidth; x++) {
+            for (let y = 0; y < this.gridHeight; y++) {
+                if (this.pixels[x][y] !== null) count++;
+            }
+        }
+        this.pixelCount = count;
+        document.getElementById('pixelCount').textContent = count;
+    }
+    
+    // 🚀 FIXED RANDOMIZATION - No more guaranteed center element!
+    randomizeCanvas() {
+        // Clear canvas first
+        this.clearCanvas();
+        
+        // Step 1: Generate epic background using pattern generators (sometimes)
+        if (Math.random() < 0.6) {
+            const backgrounds = ['cybermesh', 'neuralnet', 'datamatrix', 'circuitboard', 'hexgrid', 'starfield'];
+            const selectedBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+            
+            // Paint background in multiple random locations
+            const oldSprite = this.selectedSprite;
+            const oldType = this.selectedPixelType;
+            this.selectedSprite = selectedBg;
+            this.selectedPixelType = 'pattern';
+            
+            // Fewer, more varied background placements
+            const numBgElements = 2 + Math.floor(Math.random() * 4); // 2-5 elements
+            for (let i = 0; i < numBgElements; i++) {
+                const bgX = Math.floor(Math.random() * this.gridWidth);
+                const bgY = Math.floor(Math.random() * this.gridHeight);
+                this.drawPattern(bgX, bgY);
+            }
+            
+            this.selectedSprite = oldSprite;
+            this.selectedPixelType = oldType;
+        }
+        
+        // Step 2: Add geometric constructs as focal points (random positions!)
+        const geometrics = ['fractal', 'mandala', 'spiral', 'galaxy', 'crystal', 'circuit', 'flower'];
+        this.selectedPixelType = 'sprite';
+        
+        const numConstructs = 2 + Math.floor(Math.random() * 4); // 2-5 constructs
+        for (let i = 0; i < numConstructs; i++) {
+            this.selectedSprite = geometrics[Math.floor(Math.random() * geometrics.length)];
+            // COMPLETELY RANDOM POSITIONING - not centered!
+            const geoX = Math.floor(Math.random() * this.gridWidth);
+            const geoY = Math.floor(Math.random() * this.gridHeight);
+            const colors = ['#00ff41', '#ff006e', '#00f5ff', '#ffff00', '#ff4081', '#9c27b0'];
+            this.currentColor = colors[Math.floor(Math.random() * colors.length)];
+            this.drawSprite(geoX, geoY);
+        }
+        
+        // Step 3: Scatter quantum texture effects throughout
+        const textures = ['quantum', 'chaos', 'strobe', 'lightning', 'nova', 'spectrum', 'vortex', 'flicker', 'static', 'distort', 'particle', 'temporal', 'fractal', 'phantom', 'surge', 'cascade'];
+        const numTextures = 100 + Math.floor(Math.random() * 100); // 100-200 effects
+        
+        for (let i = 0; i < numTextures; i++) {
+            const texture = textures[Math.floor(Math.random() * textures.length)];
+            const x = Math.floor(Math.random() * this.gridWidth);
+            const y = Math.floor(Math.random() * this.gridHeight);
+            const colors = ['#00ff41', '#ff006e', '#00f5ff', '#ffff00', '#ff4081', '#4caf50', '#ff9800', '#9c27b0'];
+            
+            this.setPixel(x, y, {
+                color: colors[Math.floor(Math.random() * colors.length)],
+                type: texture
+            });
+        }
+        
+        // Step 4: Create energy corridors (connecting lines of effects) - sometimes
+        if (Math.random() < 0.7) {
+            const numCorridors = 1 + Math.floor(Math.random() * 3); // 1-3 corridors
+            for (let corridor = 0; corridor < numCorridors; corridor++) {
+                const startX = Math.floor(Math.random() * this.gridWidth);
+                const startY = Math.floor(Math.random() * this.gridHeight);
+                const endX = Math.floor(Math.random() * this.gridWidth);
+                const endY = Math.floor(Math.random() * this.gridHeight);
+                
+                const steps = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+                const corridorTextures = ['lightning', 'surge', 'particle', 'temporal', 'phantom'];
+                const corridorColors = ['#ffffff', '#00f5ff', '#ff006e', '#ffff00', '#ff4081'];
+                const corridorTexture = corridorTextures[corridor % corridorTextures.length];
+                const corridorColor = corridorColors[corridor % corridorColors.length];
+                
+                for (let step = 0; step <= steps; step++) {
+                    const t = step / steps;
+                    const x = Math.floor(startX + t * (endX - startX));
+                    const y = Math.floor(startY + t * (endY - startY));
+                    
+                    // Main corridor
+                    this.setPixel(x, y, {
+                        color: corridorColor,
+                        type: corridorTexture
+                    });
+                    
+                    // Corridor sparks (fewer than before)
+                    if (Math.random() > 0.8) {
+                        const sparkX = x + Math.floor((Math.random() - 0.5) * 6);
+                        const sparkY = y + Math.floor((Math.random() - 0.5) * 6);
+                        this.setPixel(sparkX, sparkY, {
+                            color: corridorColor + '80',
+                            type: 'chaos'
+                        });
                     }
-                    break;
-                case 's':
-                    e.preventDefault();
-                    this.saveImage();
-                    break;
+                }
             }
         }
         
-        // Tool shortcuts
-        switch (e.key) {
-            case 'p': this.setTool('paint'); break;
-            case 'e': this.setTool('erase'); break;
-            case 'f': this.setTool('fill'); break;
-            case 'i': this.setTool('sample'); break;
-            case 'g': this.toggleGrid(); break;
-            case 'r': this.epicRandomize(); break;
+        // Step 5: Add reality tears in random locations (not just corners!)
+        if (Math.random() < 0.5) {
+            const numTears = 2 + Math.floor(Math.random() * 3); // 2-4 tears
+            for (let tear = 0; tear < numTears; tear++) {
+                // RANDOM positions instead of fixed corners
+                const tearCenterX = Math.floor(Math.random() * this.gridWidth);
+                const tearCenterY = Math.floor(Math.random() * this.gridHeight);
+                
+                for (let i = 0; i < 15; i++) {
+                    const tearX = tearCenterX + Math.floor((Math.random() - 0.5) * 20);
+                    const tearY = tearCenterY + Math.floor((Math.random() - 0.5) * 20);
+                    this.setPixel(tearX, tearY, {
+                        color: ['#8b00ff', '#ff006e', '#00f5ff'][tear % 3],
+                        type: 'distort'
+                    });
+                }
+            }
         }
-    }
-
-    toggleGifRecording() {
-        // GIF recording functionality would go here
-        console.log('🎬 GIF recording toggled');
+        
+        // Step 6: OPTIONAL focal point (only 25% chance, not always centered!)
+        if (Math.random() < 0.25) {
+            const focalEffects = ['nova', 'vortex', 'temporal', 'chaos', 'surge', 'fractal', 'spectrum'];
+            const focalType = focalEffects[Math.floor(Math.random() * focalEffects.length)];
+            
+            // RANDOM focal position (not always center!)
+            const focalX = Math.floor(Math.random() * this.gridWidth);
+            const focalY = Math.floor(Math.random() * this.gridHeight);
+            
+            // Smaller, more varied focal pattern
+            const maxRadius = 2 + Math.floor(Math.random() * 4); // 2-5 radius
+            const angleStep = 30 + Math.floor(Math.random() * 90); // 30-120 degree steps
+            const focalColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00', '#ff4081'];
+            
+            for (let radius = 1; radius <= maxRadius; radius++) {
+                for (let angle = 0; angle < 360; angle += angleStep) {
+                    const rad = angle * Math.PI / 180;
+                    const x = focalX + Math.cos(rad) * radius;
+                    const y = focalY + Math.sin(rad) * radius;
+                    
+                    if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                        this.setPixel(Math.floor(x), Math.floor(y), {
+                            color: focalColors[Math.floor(Math.random() * focalColors.length)],
+                            type: focalType
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Save the randomized state
+        this.saveCanvasState();
+        this.updatePixelCount();
+        console.log('🚀 EPIC RANDOMIZATION COMPLETE! Generated truly randomized composition!');
+        console.log('🎲 No fixed patterns - every generation is unique!');
     }
 }
 
-// Initialize when DOM is loaded
-let pixelBuilder;
-
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM Content Loaded - Starting Pixel Forge Matrix...');
-    
-    // Add a small delay to ensure all elements are rendered
-    setTimeout(() => {
-        try {
-            // Detect if mobile
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
-            if (isMobile) {
-                console.log('📱 Initializing mobile version...');
-                document.body.classList.add('mobile');
-            } else {
-                console.log('💻 Initializing desktop version...');
-            }
-            
-            // Verify canvas elements exist before initializing
-            const pixelCanvas = document.getElementById('pixelCanvas');
-            const gridOverlay = document.getElementById('gridOverlay');
-            
-            console.log('🔍 Pre-check - pixelCanvas:', pixelCanvas);
-            console.log('🔍 Pre-check - gridOverlay:', gridOverlay);
-            
-            if (!pixelCanvas) {
-                console.error('❌ pixelCanvas element not found! Check your HTML.');
-                return;
-            }
-            
-            // Initialize the main application
-            pixelBuilder = new PixelCollageBuilder();
-            
-            // Make it globally accessible for onclick handlers
-            window.pixelBuilder = pixelBuilder;
-            
-            console.log('🌌 Pixel Forge Matrix initialized successfully!');
-            
-        } catch (error) {
-            console.error('❌ Failed to initialize Pixel Forge Matrix:', error);
-            console.error('Stack:', error.stack);
-        }
-    }, 100); // 100ms delay to ensure DOM is fully rendered
+// Initialize the app when the page loads
+window.addEventListener('DOMContentLoaded', () => {
+    new PixelCollageBuilder();
 });
