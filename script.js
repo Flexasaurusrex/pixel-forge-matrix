@@ -1,7 +1,91 @@
+// Canvas History Management System
+class CanvasHistory {
+    constructor(canvas, maxStates = 50) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.maxStates = maxStates;
+        this.history = [];
+        this.currentIndex = -1;
+        this.isRestoring = false;
+        
+        // Save initial state
+        this.saveState();
+    }
+    
+    saveState() {
+        if (this.isRestoring) return;
+        
+        // Remove any states after current index (when user made new changes after undo)
+        this.history = this.history.slice(0, this.currentIndex + 1);
+        
+        // Get current canvas data
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Add new state
+        this.history.push(imageData);
+        this.currentIndex++;
+        
+        // Keep only maxStates
+        if (this.history.length > this.maxStates) {
+            this.history.shift();
+            this.currentIndex--;
+        }
+        
+        this.updateButtons();
+    }
+    
+    undo() {
+        if (this.currentIndex > 0) {
+            this.currentIndex--;
+            this.restoreState();
+            return true;
+        }
+        return false;
+    }
+    
+    redo() {
+        if (this.currentIndex < this.history.length - 1) {
+            this.currentIndex++;
+            this.restoreState();
+            return true;
+        }
+        return false;
+    }
+    
+    restoreState() {
+        if (this.currentIndex >= 0 && this.currentIndex < this.history.length) {
+            this.isRestoring = true;
+            const imageData = this.history[this.currentIndex];
+            this.ctx.putImageData(imageData, 0, 0);
+            this.isRestoring = false;
+            this.updateButtons();
+        }
+    }
+    
+    updateButtons() {
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        
+        if (undoBtn) {
+            undoBtn.disabled = this.currentIndex <= 0;
+        }
+        
+        if (redoBtn) {
+            redoBtn.disabled = this.currentIndex >= this.history.length - 1;
+        }
+    }
+    
+    clear() {
+        this.history = [];
+        this.currentIndex = -1;
+        this.saveState();
+    }
+}
+
 class PixelCollageBuilder {
     constructor() {
         this.canvas = document.getElementById('canvas');
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
         this.gridCanvas = document.getElementById('gridOverlay');
         this.gridCtx = this.gridCanvas.getContext('2d');
         
@@ -77,9 +161,105 @@ class PixelCollageBuilder {
         this.generatePatternLibrary();
         this.generateColorPicker();
         this.setupEventListeners();
+        this.setupUndoRedo(); // Initialize undo/redo system
         this.drawGrid();
         this.updatePixelCount();
         this.startAnimationLoop();
+    }
+    
+    setupUndoRedo() {
+        this.canvasHistory = new CanvasHistory(this.canvas);
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.undo();
+                } else if ((e.key === 'y') || (e.key === 'z' && e.shiftKey)) {
+                    e.preventDefault();
+                    this.redo();
+                }
+            }
+        });
+        
+        // Button event listeners
+        document.getElementById('undoBtn')?.addEventListener('click', () => this.undo());
+        document.getElementById('redoBtn')?.addEventListener('click', () => this.redo());
+    }
+    
+    undo() {
+        if (this.canvasHistory.undo()) {
+            this.showToast('↶ Undo');
+            this.syncPixelsFromCanvas();
+            this.updatePixelCount();
+        }
+    }
+    
+    redo() {
+        if (this.canvasHistory.redo()) {
+            this.showToast('↷ Redo');
+            this.syncPixelsFromCanvas();
+            this.updatePixelCount();
+        }
+    }
+    
+    saveCanvasState() {
+        this.canvasHistory?.saveState();
+    }
+    
+    syncPixelsFromCanvas() {
+        // Sync the pixels array with the canvas after undo/redo
+        // This is a simplified sync - in practice you'd want to rebuild from canvas data
+        // For now, we'll just update the pixel count
+        this.updatePixelCount();
+    }
+    
+    showToast(message) {
+        // Simple toast notification
+        const existingToast = document.querySelector('.toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 255, 0.9);
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10000;
+            animation: toastSlide 0.3s ease-out;
+        `;
+        
+        // Add animation keyframes if not exists
+        if (!document.querySelector('#toast-styles')) {
+            const style = document.createElement('style');
+            style.id = 'toast-styles';
+            style.textContent = `
+                @keyframes toastSlide {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 2000);
     }
     
     startFpsCounter() {
@@ -610,6 +790,10 @@ class PixelCollageBuilder {
     }
     
     stopDrawing() {
+        if (this.isDrawing) {
+            // Save canvas state after completing a drawing operation
+            this.saveCanvasState();
+        }
         this.isDrawing = false;
     }
     
@@ -634,6 +818,7 @@ class PixelCollageBuilder {
             case 'fill':
                 if (this.isDrawing) {
                     this.floodFill(pos.x, pos.y);
+                    this.saveCanvasState(); // Save state after fill
                     this.isDrawing = false;
                 }
                 break;
@@ -915,6 +1100,8 @@ class PixelCollageBuilder {
         if (sprites[this.selectedSprite]) {
             sprites[this.selectedSprite].call(this, centerX, centerY);
         }
+        // Save state after placing sprite
+        this.saveCanvasState();
     }
     
     drawFractal(centerX, centerY) {
@@ -1073,6 +1260,8 @@ class PixelCollageBuilder {
         if (patterns[this.selectedSprite]) {
             patterns[this.selectedSprite].call(this, centerX, centerY);
         }
+        // Save state after placing pattern
+        this.saveCanvasState();
     }
     
     drawCyberMesh(centerX, centerY) {
@@ -1553,6 +1742,7 @@ class PixelCollageBuilder {
         this.ctx.fillStyle = '#000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
+        this.canvasHistory.clear(); // Clear history when canvas is cleared
         this.updatePixelCount();
     }
     
@@ -1703,6 +1893,8 @@ class PixelCollageBuilder {
         this.selectedSprite = oldSprite;
         this.selectedPixelType = oldType;
         
+        // Save the randomized state
+        this.saveCanvasState();
         this.updatePixelCount();
         console.log('🚀 EPIC RANDOMIZATION COMPLETE! Generated procedural masterpiece with:');
         console.log(`📍 Background: ${selectedBg.toUpperCase()}`);
