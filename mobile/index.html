@@ -428,8 +428,12 @@
                 this.recordingFrames = 0;
                 this.maxRecordingFrames = 60; // 2 seconds at 30fps for mobile
                 
-                // Quantum pixel types optimized for mobile
-                this.pixelTypes = ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex'];
+                // FIXED: Added all missing quantum pixel types for variety!
+                this.pixelTypes = [
+                    'quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex',
+                    'flicker', 'static', 'particle', 'lightning', 'temporal', 'surge'
+                ];
+                
                 this.colors = [
                     '#00ff41', '#ff006e', '#00f5ff', '#ffff00', 
                     '#ff4081', '#9c27b0', '#ff9800', '#4caf50'
@@ -654,6 +658,83 @@
                             this.ctx.fillRect(vx - 1, vy - 1, 2, 2);
                         }
                         break;
+
+                    // NEW EFFECTS - FIXED MOBILE VARIETY!
+                    case 'flicker':
+                        // Storm-like flickering
+                        const flicker = Math.random() > 0.7;
+                        if (flicker) {
+                            const intensity = Math.random();
+                            this.ctx.fillStyle = intensity > 0.5 ? '#ffffff' : pixel.color;
+                            this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+                        } else {
+                            this.ctx.fillStyle = pixel.color + '80';
+                            this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+                        }
+                        break;
+
+                    case 'static':
+                        // TV static effect
+                        for (let i = 0; i < 12; i++) {
+                            const sx = centerX + (Math.random() - 0.5) * this.gridSize;
+                            const sy = centerY + (Math.random() - 0.5) * this.gridSize;
+                            const staticColors = ['#ffffff', '#cccccc', pixel.color];
+                            this.ctx.fillStyle = staticColors[Math.floor(Math.random() * staticColors.length)];
+                            this.ctx.fillRect(sx, sy, 1, 1);
+                        }
+                        break;
+
+                    case 'particle':
+                        // Flowing particle streams
+                        for (let i = 0; i < 6; i++) {
+                            const angle = time + i * 0.5;
+                            const radius = (i / 6) * this.gridSize / 2;
+                            const px = centerX + Math.cos(angle) * radius;
+                            const py = centerY + Math.sin(angle) * radius;
+                            this.ctx.fillStyle = pixel.color + 'bb';
+                            this.ctx.fillRect(px - 1, py - 1, 2, 2);
+                        }
+                        break;
+
+                    case 'lightning':
+                        // Electric arc effects
+                        const lightningPaths = 4;
+                        for (let i = 0; i < lightningPaths; i++) {
+                            let lx = centerX;
+                            let ly = centerY;
+                            for (let step = 0; step < 4; step++) {
+                                lx += (Math.random() - 0.5) * 4;
+                                ly += (Math.random() - 0.5) * 4;
+                                this.ctx.fillStyle = step % 2 ? '#ffffff' : pixel.color;
+                                this.ctx.fillRect(lx, ly, 2, 2);
+                            }
+                        }
+                        break;
+
+                    case 'temporal':
+                        // Time rift distortions
+                        const layers = 4;
+                        for (let layer = 0; layer < layers; layer++) {
+                            const timeOffset = time + layer * 0.7;
+                            const radius = Math.sin(timeOffset) * this.gridSize / 3;
+                            const tx = centerX + Math.cos(timeOffset * 2) * radius;
+                            const ty = centerY + Math.sin(timeOffset * 3) * radius;
+                            const alpha = Math.floor((0.8 - layer * 0.2) * 255).toString(16);
+                            this.ctx.fillStyle = pixel.color + alpha;
+                            this.ctx.fillRect(tx - 1, ty - 1, 3, 3);
+                        }
+                        break;
+
+                    case 'surge':
+                        // Energy wave pulses
+                        const wave = Math.sin(time + x * 0.3 + y * 0.3) * 0.5 + 0.5;
+                        const surgeSize = this.gridSize * (0.5 + wave * 0.5);
+                        const surgeX = centerX - surgeSize / 2;
+                        const surgeY = centerY - surgeSize / 2;
+                        const surgeAlpha = Math.floor(wave * 255).toString(16).padStart(2, '0');
+                        this.ctx.fillStyle = pixel.color + surgeAlpha;
+                        this.ctx.fillRect(surgeX, surgeY, surgeSize, surgeSize);
+                        break;
                         
                     default:
                         this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
@@ -703,7 +784,7 @@
             }
             
             isAnimatedType(type) {
-                return ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex'].includes(type);
+                return ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex', 'flicker', 'static', 'particle', 'lightning', 'temporal', 'surge'].includes(type);
             }
             
             clearPixel(x, y) {
@@ -719,14 +800,15 @@
                 return this.colors[Math.floor(Math.random() * this.colors.length)];
             }
             
+            // FIXED: Much better randomization algorithm!
             randomize() {
                 // Clear canvas with black
                 this.ctx.fillStyle = '#000000';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
                 
-                // Generate random art
-                for (let i = 0; i < 200; i++) {
+                // Generate random scattered art
+                for (let i = 0; i < 250; i++) {
                     const x = Math.floor(Math.random() * this.gridWidth);
                     const y = Math.floor(Math.random() * this.gridHeight);
                     
@@ -736,22 +818,28 @@
                     });
                 }
                 
-                // Add some geometric patterns
-                const centerX = Math.floor(this.gridWidth / 2);
-                const centerY = Math.floor(this.gridHeight / 2);
-                
-                // Central burst
-                for (let radius = 1; radius <= 6; radius++) {
-                    for (let angle = 0; angle < 360; angle += 45) {
-                        const rad = angle * Math.PI / 180;
-                        const x = centerX + Math.cos(rad) * radius;
-                        const y = centerY + Math.sin(rad) * radius;
-                        
-                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
-                            this.setPixel(Math.floor(x), Math.floor(y), {
-                                color: '#ffffff',
-                                type: 'nova'
-                            });
+                // OPTIONAL center element (only 40% chance now!)
+                if (Math.random() < 0.4) {
+                    const centerEffects = ['nova', 'vortex', 'temporal', 'chaos', 'surge'];
+                    const centerType = centerEffects[Math.floor(Math.random() * centerEffects.length)];
+                    
+                    // Random center position (not always dead center)
+                    const centerX = Math.floor(this.gridWidth / 2) + Math.floor((Math.random() - 0.5) * 8);
+                    const centerY = Math.floor(this.gridHeight / 2) + Math.floor((Math.random() - 0.5) * 8);
+                    
+                    // Smaller, varied center pattern
+                    for (let radius = 1; radius <= 3; radius++) {
+                        for (let angle = 0; angle < 360; angle += 60) {
+                            const rad = angle * Math.PI / 180;
+                            const x = centerX + Math.cos(rad) * radius;
+                            const y = centerY + Math.sin(rad) * radius;
+                            
+                            if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                                this.setPixel(Math.floor(x), Math.floor(y), {
+                                    color: this.getRandomColor(), // Random color instead of white
+                                    type: centerType
+                                });
+                            }
                         }
                     }
                 }
