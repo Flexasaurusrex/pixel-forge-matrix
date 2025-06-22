@@ -1769,32 +1769,42 @@ class PixelCollageBuilder {
         document.getElementById('pixelCount').textContent = count;
     }
     
+    // 🚀 FIXED RANDOMIZATION - No more guaranteed center element!
     randomizeCanvas() {
         // Clear canvas first
         this.clearCanvas();
         
-        // Step 1: Generate epic background using pattern generators
-        const backgrounds = ['cybermesh', 'neuralnet', 'datamatrix', 'circuitboard', 'hexgrid', 'starfield'];
-        const selectedBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        
-        // Paint background in multiple locations for full coverage
-        const oldSprite = this.selectedSprite;
-        const oldType = this.selectedPixelType;
-        this.selectedSprite = selectedBg;
-        this.selectedPixelType = 'pattern';
-        
-        for (let i = 0; i < 8; i++) {
-            const bgX = Math.floor(Math.random() * this.gridWidth);
-            const bgY = Math.floor(Math.random() * this.gridHeight);
-            this.drawPattern(bgX, bgY);
+        // Step 1: Generate epic background using pattern generators (sometimes)
+        if (Math.random() < 0.6) {
+            const backgrounds = ['cybermesh', 'neuralnet', 'datamatrix', 'circuitboard', 'hexgrid', 'starfield'];
+            const selectedBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+            
+            // Paint background in multiple random locations
+            const oldSprite = this.selectedSprite;
+            const oldType = this.selectedPixelType;
+            this.selectedSprite = selectedBg;
+            this.selectedPixelType = 'pattern';
+            
+            // Fewer, more varied background placements
+            const numBgElements = 2 + Math.floor(Math.random() * 4); // 2-5 elements
+            for (let i = 0; i < numBgElements; i++) {
+                const bgX = Math.floor(Math.random() * this.gridWidth);
+                const bgY = Math.floor(Math.random() * this.gridHeight);
+                this.drawPattern(bgX, bgY);
+            }
+            
+            this.selectedSprite = oldSprite;
+            this.selectedPixelType = oldType;
         }
         
-        // Step 2: Add geometric constructs as focal points
+        // Step 2: Add geometric constructs as focal points (random positions!)
         const geometrics = ['fractal', 'mandala', 'spiral', 'galaxy', 'crystal', 'circuit', 'flower'];
         this.selectedPixelType = 'sprite';
         
-        for (let i = 0; i < 5; i++) {
+        const numConstructs = 2 + Math.floor(Math.random() * 4); // 2-5 constructs
+        for (let i = 0; i < numConstructs; i++) {
             this.selectedSprite = geometrics[Math.floor(Math.random() * geometrics.length)];
+            // COMPLETELY RANDOM POSITIONING - not centered!
             const geoX = Math.floor(Math.random() * this.gridWidth);
             const geoY = Math.floor(Math.random() * this.gridHeight);
             const colors = ['#00ff41', '#ff006e', '#00f5ff', '#ffff00', '#ff4081', '#9c27b0'];
@@ -1803,9 +1813,10 @@ class PixelCollageBuilder {
         }
         
         // Step 3: Scatter quantum texture effects throughout
-        const textures = ['quantum', 'chaos', 'strobe', 'lightning', 'nova', 'spectrum', 'vortex'];
+        const textures = ['quantum', 'chaos', 'strobe', 'lightning', 'nova', 'spectrum', 'vortex', 'flicker', 'static', 'distort', 'particle', 'temporal', 'fractal', 'phantom', 'surge', 'cascade'];
+        const numTextures = 100 + Math.floor(Math.random() * 100); // 100-200 effects
         
-        for (let i = 0; i < 150; i++) {
+        for (let i = 0; i < numTextures; i++) {
             const texture = textures[Math.floor(Math.random() * textures.length)];
             const x = Math.floor(Math.random() * this.gridWidth);
             const y = Math.floor(Math.random() * this.gridHeight);
@@ -1817,92 +1828,99 @@ class PixelCollageBuilder {
             });
         }
         
-        // Step 4: Create energy corridors (connecting lines of effects)
-        for (let corridor = 0; corridor < 3; corridor++) {
-            const startX = Math.floor(Math.random() * this.gridWidth);
-            const startY = Math.floor(Math.random() * this.gridHeight);
-            const endX = Math.floor(Math.random() * this.gridWidth);
-            const endY = Math.floor(Math.random() * this.gridHeight);
-            
-            const steps = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
-            const corridorTexture = ['lightning', 'surge', 'particle'][corridor % 3];
-            const corridorColor = ['#ffffff', '#00f5ff', '#ff006e'][corridor % 3];
-            
-            for (let step = 0; step <= steps; step++) {
-                const t = step / steps;
-                const x = Math.floor(startX + t * (endX - startX));
-                const y = Math.floor(startY + t * (endY - startY));
+        // Step 4: Create energy corridors (connecting lines of effects) - sometimes
+        if (Math.random() < 0.7) {
+            const numCorridors = 1 + Math.floor(Math.random() * 3); // 1-3 corridors
+            for (let corridor = 0; corridor < numCorridors; corridor++) {
+                const startX = Math.floor(Math.random() * this.gridWidth);
+                const startY = Math.floor(Math.random() * this.gridHeight);
+                const endX = Math.floor(Math.random() * this.gridWidth);
+                const endY = Math.floor(Math.random() * this.gridHeight);
                 
-                // Main corridor
-                this.setPixel(x, y, {
-                    color: corridorColor,
-                    type: corridorTexture
-                });
+                const steps = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+                const corridorTextures = ['lightning', 'surge', 'particle', 'temporal', 'phantom'];
+                const corridorColors = ['#ffffff', '#00f5ff', '#ff006e', '#ffff00', '#ff4081'];
+                const corridorTexture = corridorTextures[corridor % corridorTextures.length];
+                const corridorColor = corridorColors[corridor % corridorColors.length];
                 
-                // Corridor sparks
-                if (Math.random() > 0.7) {
-                    const sparkX = x + Math.floor((Math.random() - 0.5) * 6);
-                    const sparkY = y + Math.floor((Math.random() - 0.5) * 6);
-                    this.setPixel(sparkX, sparkY, {
-                        color: corridorColor + '80',
-                        type: 'chaos'
+                for (let step = 0; step <= steps; step++) {
+                    const t = step / steps;
+                    const x = Math.floor(startX + t * (endX - startX));
+                    const y = Math.floor(startY + t * (endY - startY));
+                    
+                    // Main corridor
+                    this.setPixel(x, y, {
+                        color: corridorColor,
+                        type: corridorTexture
+                    });
+                    
+                    // Corridor sparks (fewer than before)
+                    if (Math.random() > 0.8) {
+                        const sparkX = x + Math.floor((Math.random() - 0.5) * 6);
+                        const sparkY = y + Math.floor((Math.random() - 0.5) * 6);
+                        this.setPixel(sparkX, sparkY, {
+                            color: corridorColor + '80',
+                            type: 'chaos'
+                        });
+                    }
+                }
+            }
+        }
+        
+        // Step 5: Add reality tears in random locations (not just corners!)
+        if (Math.random() < 0.5) {
+            const numTears = 2 + Math.floor(Math.random() * 3); // 2-4 tears
+            for (let tear = 0; tear < numTears; tear++) {
+                // RANDOM positions instead of fixed corners
+                const tearCenterX = Math.floor(Math.random() * this.gridWidth);
+                const tearCenterY = Math.floor(Math.random() * this.gridHeight);
+                
+                for (let i = 0; i < 15; i++) {
+                    const tearX = tearCenterX + Math.floor((Math.random() - 0.5) * 20);
+                    const tearY = tearCenterY + Math.floor((Math.random() - 0.5) * 20);
+                    this.setPixel(tearX, tearY, {
+                        color: ['#8b00ff', '#ff006e', '#00f5ff'][tear % 3],
+                        type: 'distort'
                     });
                 }
             }
         }
         
-        // Step 5: Add reality tears (void effects in corners)
-        const corners = [
-            {x: 10, y: 10}, {x: this.gridWidth - 10, y: 10},
-            {x: 10, y: this.gridHeight - 10}, {x: this.gridWidth - 10, y: this.gridHeight - 10}
-        ];
-        
-        corners.forEach(corner => {
-            for (let i = 0; i < 20; i++) {
-                const tearX = corner.x + Math.floor((Math.random() - 0.5) * 15);
-                const tearY = corner.y + Math.floor((Math.random() - 0.5) * 15);
-                this.setPixel(tearX, tearY, {
-                    color: '#8b00ff',
-                    type: 'distort'
-                });
-            }
-        });
-        
-        // Step 6: Central explosion effect
-        const centerX = Math.floor(this.gridWidth / 2);
-        const centerY = Math.floor(this.gridHeight / 2);
-        
-        // Core explosion
-        for (let radius = 1; radius <= 8; radius++) {
-            for (let angle = 0; angle < 360; angle += 15) {
-                const rad = angle * Math.PI / 180;
-                const x = centerX + Math.cos(rad) * radius;
-                const y = centerY + Math.sin(rad) * radius;
-                
-                const intensity = 1 - (radius / 8);
-                const alpha = Math.floor(intensity * 255).toString(16).padStart(2, '0');
-                
-                this.setPixel(Math.floor(x), Math.floor(y), {
-                    color: '#ffffff' + alpha,
-                    type: radius < 4 ? 'nova' : 'phantom'
-                });
+        // Step 6: OPTIONAL focal point (only 25% chance, not always centered!)
+        if (Math.random() < 0.25) {
+            const focalEffects = ['nova', 'vortex', 'temporal', 'chaos', 'surge', 'fractal', 'spectrum'];
+            const focalType = focalEffects[Math.floor(Math.random() * focalEffects.length)];
+            
+            // RANDOM focal position (not always center!)
+            const focalX = Math.floor(Math.random() * this.gridWidth);
+            const focalY = Math.floor(Math.random() * this.gridHeight);
+            
+            // Smaller, more varied focal pattern
+            const maxRadius = 2 + Math.floor(Math.random() * 4); // 2-5 radius
+            const angleStep = 30 + Math.floor(Math.random() * 90); // 30-120 degree steps
+            const focalColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00', '#ff4081'];
+            
+            for (let radius = 1; radius <= maxRadius; radius++) {
+                for (let angle = 0; angle < 360; angle += angleStep) {
+                    const rad = angle * Math.PI / 180;
+                    const x = focalX + Math.cos(rad) * radius;
+                    const y = focalY + Math.sin(rad) * radius;
+                    
+                    if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                        this.setPixel(Math.floor(x), Math.floor(y), {
+                            color: focalColors[Math.floor(Math.random() * focalColors.length)],
+                            type: focalType
+                        });
+                    }
+                }
             }
         }
-        
-        // Restore original settings
-        this.selectedSprite = oldSprite;
-        this.selectedPixelType = oldType;
         
         // Save the randomized state
         this.saveCanvasState();
         this.updatePixelCount();
-        console.log('🚀 EPIC RANDOMIZATION COMPLETE! Generated procedural masterpiece with:');
-        console.log(`📍 Background: ${selectedBg.toUpperCase()}`);
-        console.log('⚡ 5 Geometric constructs');
-        console.log('🌟 150 Quantum texture effects');
-        console.log('🔥 3 Energy corridors');
-        console.log('🌀 4 Reality tears');
-        console.log('💥 Central nova explosion');
+        console.log('🚀 EPIC RANDOMIZATION COMPLETE! Generated truly randomized composition!');
+        console.log('🎲 No fixed patterns - every generation is unique!');
     }
 }
 
