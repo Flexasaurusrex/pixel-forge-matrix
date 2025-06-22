@@ -1,213 +1,1248 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Collage Builder - Retrowave Edition</title>
-    <meta name="description" content="Create stunning digital pixel collages with quantum textures, geometric constructs, and retrowave color cycling effects.">
-    <meta name="keywords" content="pixel art, collage, retrowave, cyberpunk, digital art, creative tools">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <!-- Mobile Detection and Auto-Redirect -->
-    <script>
-    (function() {
-        // Mobile detection and redirect
-        function isMobileDevice() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const mobileKeywords = [
-                'android', 'iphone', 'ipad', 'ipod', 'blackberry', 
-                'windows phone', 'mobile', 'opera mini'
-            ];
-            
-            // Check user agent
-            const isMobileUA = mobileKeywords.some(keyword => userAgent.includes(keyword));
-            
-            // Check screen size (phones typically < 768px width)
-            const isSmallScreen = window.innerWidth <= 768;
-            
-            // Check touch capability
-            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            
-            return isMobileUA || (isSmallScreen && isTouchDevice);
+// Canvas History Management System
+class CanvasHistory {
+    constructor(canvas, maxStates = 50) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.maxStates = maxStates;
+        this.history = [];
+        this.currentIndex = -1;
+        this.isRestoring = false;
+    }
+
+    saveState() {
+        if (this.isRestoring) return;
+        
+        // Remove any states after current position
+        this.history = this.history.slice(0, this.currentIndex + 1);
+        
+        // Add new state
+        const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        this.history.push(imageData);
+        
+        // Remove oldest state if we exceed max
+        if (this.history.length > this.maxStates) {
+            this.history.shift();
+        } else {
+            this.currentIndex++;
+        }
+    }
+
+    undo() {
+        if (this.currentIndex > 0) {
+            this.currentIndex--;
+            this.restoreState();
+            return true;
+        }
+        return false;
+    }
+
+    redo() {
+        if (this.currentIndex < this.history.length - 1) {
+            this.currentIndex++;
+            this.restoreState();
+            return true;
+        }
+        return false;
+    }
+
+    restoreState() {
+        if (this.currentIndex >= 0 && this.currentIndex < this.history.length) {
+            this.isRestoring = true;
+            this.ctx.putImageData(this.history[this.currentIndex], 0, 0);
+            this.isRestoring = false;
+        }
+    }
+
+    hasUndo() {
+        return this.currentIndex > 0;
+    }
+
+    hasRedo() {
+        return this.currentIndex < this.history.length - 1;
+    }
+
+    clear() {
+        this.history = [];
+        this.currentIndex = -1;
+    }
+}
+
+// Enhanced Performance Monitor
+class PerformanceMonitor {
+    constructor() {
+        this.fps = 0;
+        this.frameCount = 0;
+        this.lastTime = performance.now();
+        this.pixelCount = 0;
+        this.effectsCount = 0;
+    }
+
+    update() {
+        this.frameCount++;
+        const currentTime = performance.now();
+        
+        if (currentTime - this.lastTime >= 1000) {
+            this.fps = Math.round((this.frameCount * 1000) / (currentTime - this.lastTime));
+            this.frameCount = 0;
+            this.lastTime = currentTime;
+            this.updateDisplay();
+        }
+    }
+
+    updateDisplay() {
+        const fpsElement = document.getElementById('fps');
+        const pixelElement = document.getElementById('pixelCount');
+        
+        if (fpsElement) {
+            fpsElement.textContent = `${this.fps}`;
         }
         
-        // Only redirect if:
-        // 1. We're on mobile
-        // 2. Not already on mobile path
-        // 3. User hasn't opted for desktop version
-        if (isMobileDevice() && 
-            !window.location.pathname.includes('/mobile') && 
-            !localStorage.getItem('forceDesktop')) {
+        if (pixelElement) {
+            pixelElement.textContent = `${this.pixelCount}`;
+        }
+    }
+
+    addPixels(count) {
+        this.pixelCount += count;
+    }
+
+    addEffect() {
+        this.effectsCount++;
+    }
+
+    reset() {
+        this.pixelCount = 0;
+        this.effectsCount = 0;
+        this.updateDisplay();
+    }
+}
+
+// Main Pixel Collage Builder Class with FULL ANIMATIONS
+class PixelCollageBuilder {
+    constructor() {
+        console.log('🚀 PixelCollageBuilder constructor started');
+        try {
+            // Wait a moment to ensure DOM is fully loaded
+            console.log('🔍 Looking for canvas elements...');
             
-            // Show brief message and redirect
-            document.addEventListener('DOMContentLoaded', function() {
-                document.body.innerHTML = `
-                    <div style="
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        height: 100vh;
-                        background: #000000;
-                        color: #00ff41;
-                        font-family: 'Orbitron', monospace;
-                        text-align: center;
-                        padding: 20px;
-                    ">
-                        <h2 style="margin-bottom: 20px; text-shadow: 0 0 10px #00ff41;">🚀 Redirecting to Mobile Version...</h2>
-                        <p style="margin-bottom: 30px; opacity: 0.7; color: #ff006e;">Optimized for touch devices</p>
-                        <button onclick="stayOnDesktop()" style="
-                            background: linear-gradient(135deg, #ff006e, #ff4081);
-                            border: 2px solid #ff006e;
-                            color: white;
-                            padding: 12px 20px;
-                            border-radius: 8px;
-                            font-family: 'Orbitron', monospace;
-                            cursor: pointer;
-                            font-size: 14px;
-                            transition: all 0.3s ease;
-                            box-shadow: 0 0 10px #ff006e;
-                        " onmouseover="this.style.boxShadow='0 0 20px #ff006e'" onmouseout="this.style.boxShadow='0 0 10px #ff006e'">Stay on Desktop Version</button>
-                    </div>
-                `;
+            // Core canvas elements with validation
+            this.canvas = document.getElementById('canvas');
+            console.log('🎯 canvas found:', this.canvas);
+            
+            if (!this.canvas) {
+                throw new Error('canvas element not found in DOM');
+            }
+            
+            this.ctx = this.canvas.getContext('2d');
+            console.log('✅ Canvas context obtained');
+            
+            this.gridCanvas = document.getElementById('gridOverlay');
+            console.log('🎯 gridOverlay found:', this.gridCanvas);
+            this.gridCtx = this.gridCanvas ? this.gridCanvas.getContext('2d') : null;
+
+            if (!this.ctx) {
+                throw new Error('Canvas context could not be obtained');
+            }
+
+            // Canvas properties
+            this.pixelSize = 8;
+            this.gridVisible = false;
+            
+            // Animation properties - RESTORED!
+            this.animationId = null;
+            this.isAnimating = false;
+            this.animationSpeed = 1;
+            this.timeAccumulator = 0;
+            
+            // Current tool and colors
+            this.currentTool = 'paint';
+            this.currentColor = '#ff00ff';
+            this.brushSize = 1;
+            
+            // Interactive state
+            this.isDrawing = false;
+            this.lastPos = { x: 0, y: 0 };
+            
+            // History and performance monitoring
+            this.history = new CanvasHistory(this.canvas);
+            this.performanceMonitor = new PerformanceMonitor();
+            
+            // Animation effects - CRITICAL FOR EPIC VISUALS
+            this.activeEffects = [];
+            this.particleSystems = [];
+            this.quantumFields = [];
+            this.geometricAnimations = [];
+            
+            // Touch and mobile support
+            this.touchTrails = [];
+            this.touchEffectMode = 'GROWING';
+            
+            // Color cycling
+            this.colorCycling = false;
+            this.colorCycleInterval = null;
+            
+            console.log('✅ Canvas elements found, size:', this.canvas.width, 'x', this.canvas.height);
+            
+            this.initializeCanvas();
+            this.setupEventListeners();
+            this.generateAllUI();
+            this.startAnimationLoop(); // START THE MAGIC!
+            
+            console.log('🌌 Pixel Forge Matrix initialized successfully with animations!');
+            
+        } catch (error) {
+            console.error('❌ Error initializing PixelCollageBuilder:', error);
+        }
+    }
+
+    // ANIMATION LOOP - THE HEART OF THE MAGIC
+    startAnimationLoop() {
+        console.log('🎬 Starting animation loop...');
+        this.isAnimating = true;
+        
+        const animate = (timestamp) => {
+            if (!this.isAnimating) return;
+            
+            this.timeAccumulator += 0.016; // ~60fps
+            
+            // Update all active animations
+            this.updateQuantumEffects(timestamp);
+            this.updateParticleSystems(timestamp);
+            this.updateGeometricAnimations(timestamp);
+            this.updateTouchTrails(timestamp);
+            
+            // Performance monitoring
+            this.performanceMonitor.update();
+            
+            this.animationId = requestAnimationFrame(animate);
+        };
+        
+        this.animationId = requestAnimationFrame(animate);
+    }
+
+    stopAnimationLoop() {
+        this.isAnimating = false;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        
+        // Stop color cycling
+        this.stopColorCycle();
+    }
+
+    // QUANTUM EFFECTS - ANIMATED TEXTURES
+    updateQuantumEffects(timestamp) {
+        this.activeEffects.forEach((effect, index) => {
+            if (effect.type === 'quantum') {
+                this.renderQuantumEffect(effect, timestamp);
+            } else if (effect.type === 'chaos') {
+                this.renderChaosEffect(effect, timestamp);
+            } else if (effect.type === 'nova') {
+                this.renderNovaEffect(effect, timestamp);
+            }
+            
+            // Remove expired effects
+            if (effect.life <= 0) {
+                this.activeEffects.splice(index, 1);
+            } else {
+                effect.life -= 0.016;
+            }
+        });
+    }
+
+    renderQuantumEffect(effect, timestamp) {
+        const time = timestamp * 0.001;
+        const centerX = effect.x;
+        const centerY = effect.y;
+        const radius = 20 + Math.sin(time * 2) * 10;
+        
+        for (let angle = 0; angle < Math.PI * 2; angle += 0.2) {
+            const x = centerX + Math.cos(angle + time) * radius;
+            const y = centerY + Math.sin(angle + time) * radius;
+            
+            // Create quantum pixel with shifting colors
+            const hue = (angle * 180 / Math.PI + time * 50) % 360;
+            const color = `hsl(${hue}, 80%, 60%)`;
+            
+            this.setPixel(Math.floor(x), Math.floor(y), color);
+        }
+    }
+
+    renderChaosEffect(effect, timestamp) {
+        const time = timestamp * 0.001;
+        
+        for (let i = 0; i < 5; i++) {
+            const x = effect.x + (Math.random() - 0.5) * 40 * Math.sin(time);
+            const y = effect.y + (Math.random() - 0.5) * 40 * Math.cos(time);
+            
+            // Chaotic color shifting
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.sin(time * 5) * 127 + 128);
+            const b = Math.floor(Math.cos(time * 3) * 127 + 128);
+            
+            this.setPixel(Math.floor(x), Math.floor(y), `rgb(${r}, ${g}, ${b})`);
+        }
+    }
+
+    renderNovaEffect(effect, timestamp) {
+        const time = timestamp * 0.001;
+        const pulseRadius = 15 + Math.sin(time * 4) * 10;
+        
+        // Expanding rings
+        for (let r = 5; r < pulseRadius; r += 3) {
+            const intensity = 1 - (r / pulseRadius);
+            const alpha = intensity * 0.8;
+            
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
+                const x = effect.x + Math.cos(angle) * r;
+                const y = effect.y + Math.sin(angle) * r;
                 
-                // Add function to stay on desktop
-                window.stayOnDesktop = function() {
-                    localStorage.setItem('forceDesktop', 'true');
-                    location.reload();
-                };
+                const color = `rgba(255, ${Math.floor(intensity * 255)}, 100, ${alpha})`;
+                this.setPixel(Math.floor(x), Math.floor(y), color);
+            }
+        }
+    }
+
+    // PARTICLE SYSTEMS
+    updateParticleSystems(timestamp) {
+        this.particleSystems.forEach((system, index) => {
+            system.particles.forEach((particle, pIndex) => {
+                // Update particle position
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.life -= 0.02;
                 
-                // Redirect after 2 seconds
-                setTimeout(() => {
-                    window.location.href = '/mobile';
-                }, 2000);
+                // Apply gravity/forces
+                particle.vy += particle.gravity || 0;
+                particle.vx *= 0.99; // Friction
+                
+                // Render particle
+                if (particle.life > 0) {
+                    const alpha = particle.life;
+                    const color = `rgba(${particle.r}, ${particle.g}, ${particle.b}, ${alpha})`;
+                    this.setPixel(Math.floor(particle.x), Math.floor(particle.y), color);
+                } else {
+                    system.particles.splice(pIndex, 1);
+                }
+            });
+            
+            // Remove empty systems
+            if (system.particles.length === 0) {
+                this.particleSystems.splice(index, 1);
+            }
+        });
+    }
+
+    // GEOMETRIC ANIMATIONS
+    updateGeometricAnimations(timestamp) {
+        const time = timestamp * 0.001;
+        
+        this.geometricAnimations.forEach((anim, index) => {
+            if (anim.type === 'spiral') {
+                this.renderAnimatedSpiral(anim, time);
+            } else if (anim.type === 'fractal') {
+                this.renderAnimatedFractal(anim, time);
+            } else if (anim.type === 'mandala') {
+                this.renderAnimatedMandala(anim, time);
+            }
+            
+            anim.life -= 0.016;
+            if (anim.life <= 0) {
+                this.geometricAnimations.splice(index, 1);
+            }
+        });
+    }
+
+    renderAnimatedSpiral(anim, time) {
+        const centerX = anim.x;
+        const centerY = anim.y;
+        const spiralSpeed = time * anim.speed;
+        
+        for (let t = 0; t < 20; t += 0.1) {
+            const angle = t + spiralSpeed;
+            const radius = t * 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            
+            const hue = (t * 20 + time * 100) % 360;
+            const color = `hsl(${hue}, 70%, 60%)`;
+            
+            this.setPixel(Math.floor(x), Math.floor(y), color);
+        }
+    }
+
+    renderAnimatedMandala(anim, time) {
+        const centerX = anim.x;
+        const centerY = anim.y;
+        const petals = 8;
+        
+        for (let i = 0; i < petals; i++) {
+            const baseAngle = (i / petals) * Math.PI * 2;
+            const petalAngle = baseAngle + time * anim.speed;
+            
+            for (let r = 5; r < 25; r += 2) {
+                const wave = Math.sin(r * 0.3 + time * 3) * 5;
+                const x = centerX + Math.cos(petalAngle) * (r + wave);
+                const y = centerY + Math.sin(petalAngle) * (r + wave);
+                
+                const hue = (i * 45 + time * 30) % 360;
+                const color = `hsl(${hue}, 80%, 70%)`;
+                
+                this.setPixel(Math.floor(x), Math.floor(y), color);
+            }
+        }
+    }
+
+    // TOUCH TRAIL EFFECTS
+    updateTouchTrails(timestamp) {
+        this.touchTrails.forEach((trail, index) => {
+            trail.points.forEach((point, pIndex) => {
+                point.life -= 0.03;
+                
+                if (point.life > 0) {
+                    this.renderTrailPoint(point, trail.mode);
+                } else {
+                    trail.points.splice(pIndex, 1);
+                }
+            });
+            
+            if (trail.points.length === 0) {
+                this.touchTrails.splice(index, 1);
+            }
+        });
+    }
+
+    renderTrailPoint(point, mode) {
+        switch (mode) {
+            case 'GROWING':
+                this.renderGrowingTrail(point);
+                break;
+            case 'EXPLODING':
+                this.renderExplodingTrail(point);
+                break;
+            case 'FLOWING':
+                this.renderFlowingTrail(point);
+                break;
+            case 'LIGHTNING':
+                this.renderLightningTrail(point);
+                break;
+        }
+    }
+
+    renderGrowingTrail(point) {
+        const size = (1 - point.life) * 10;
+        const alpha = point.life;
+        
+        for (let x = -size; x <= size; x++) {
+            for (let y = -size; y <= size; y++) {
+                if (x * x + y * y <= size * size) {
+                    const px = Math.floor(point.x + x);
+                    const py = Math.floor(point.y + y);
+                    const color = `rgba(${point.r}, ${point.g}, ${point.b}, ${alpha})`;
+                    this.setPixel(px, py, color);
+                }
+            }
+        }
+    }
+
+    renderExplodingTrail(point) {
+        const count = 8;
+        const radius = (1 - point.life) * 20;
+        
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const x = point.x + Math.cos(angle) * radius;
+            const y = point.y + Math.sin(angle) * radius;
+            
+            this.setPixel(Math.floor(x), Math.floor(y), 
+                `rgba(${point.r}, ${point.g}, ${point.b}, ${point.life})`);
+        }
+    }
+
+    initializeCanvas() {
+        console.log('📐 Initializing canvas...');
+        this.ctx.imageSmoothingEnabled = false;
+        if (this.gridCtx) {
+            this.gridCtx.imageSmoothingEnabled = false;
+        }
+        
+        // Set initial canvas size
+        this.resizeCanvas();
+        
+        // Save initial state
+        this.history.saveState();
+        
+        console.log('✅ Canvas initialized');
+    }
+
+    resizeCanvas() {
+        const container = this.canvas.parentElement;
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        
+        this.canvas.width = containerWidth;
+        this.canvas.height = containerHeight;
+        
+        if (this.gridCanvas) {
+            this.gridCanvas.width = containerWidth;
+            this.gridCanvas.height = containerHeight;
+        }
+        
+        this.drawGrid();
+    }
+
+    setupEventListeners() {
+        console.log('🔗 Setting up event listeners...');
+        
+        try {
+            // Canvas mouse events
+            this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+            this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+            this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+            this.canvas.addEventListener('mouseleave', (e) => this.onMouseUp(e));
+
+            // Canvas touch events for mobile
+            this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e));
+            this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e));
+            this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e));
+
+            // Tool buttons
+            const toolButtons = [
+                { id: 'paintTool', tool: 'paint' },
+                { id: 'eraseTool', tool: 'erase' },
+                { id: 'fillTool', tool: 'fill' },
+                { id: 'pickTool', tool: 'sample' },
+                { id: 'sprayTool', tool: 'spray' }
+            ];
+
+            toolButtons.forEach(({ id, tool }) => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.addEventListener('click', () => this.setTool(tool));
+                }
+            });
+
+            // Action buttons
+            const actionButtons = [
+                { id: 'undoBtn', action: () => this.undo() },
+                { id: 'redoBtn', action: () => this.redo() },
+                { id: 'randomize', action: () => this.epicRandomize() },
+                { id: 'clearCanvas', action: () => this.clearCanvas() },
+                { id: 'recordGifBtn', action: () => this.toggleGifRecording() },
+                { id: 'saveImage', action: () => this.saveImage() },
+                { id: 'toggleGrid', action: () => this.toggleGrid() },
+                { id: 'retrowaveBtn', action: () => this.activateRetrowave() },
+                { id: 'colorCycleBtn', action: () => this.toggleColorCycle() }
+            ];
+
+            actionButtons.forEach(({ id, action }) => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.addEventListener('click', action);
+                }
+            });
+
+            // Brush size controls
+            const brushSizeButtons = document.querySelectorAll('.size-btn');
+            brushSizeButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const size = parseInt(button.dataset.size);
+                    this.setBrushSize(size);
+                });
+            });
+
+            // Color picker
+            const colorPicker = document.getElementById('colorPicker');
+            if (colorPicker) {
+                colorPicker.addEventListener('change', (e) => {
+                    this.setColor(e.target.value);
+                });
+            }
+
+            // Story Mode button - conditional
+            const storyModeBtn = document.getElementById('storyModeBtn');
+            if (storyModeBtn) {
+                storyModeBtn.addEventListener('click', () => this.launchStoryMode());
+            }
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => this.onKeyDown(e));
+
+            // Window resize
+            window.addEventListener('resize', () => this.resizeCanvas());
+
+            console.log('✅ Event listeners set up successfully');
+            
+        } catch (error) {
+            console.error('❌ Error setting up event listeners:', error);
+        }
+    }
+
+    // Generate all UI elements
+    generateAllUI() {
+        console.log('🎨 Generating all UI elements...');
+        
+        try {
+            this.generatePixelLibrary();
+            this.generateSpriteLibrary();
+            this.generatePatternLibrary();
+            this.generateColorPicker();
+            
+            console.log('✅ All UI elements generated successfully');
+        } catch (error) {
+            console.error('❌ Error generating UI:', error);
+        }
+    }
+
+    generatePixelLibrary() {
+        console.log('🔥 generatePixelLibrary() called');
+        const container = document.getElementById('pixelLibrary');
+        if (!container) {
+            console.error('❌ pixelLibrary container not found');
+            return;
+        }
+
+        const pixelTypes = [
+            { name: 'Quantum', id: 'quantum', effect: 'quantum-shimmer' },
+            { name: 'Chaos', id: 'chaos', effect: 'chaos-flicker' },
+            { name: 'Nova', id: 'nova', effect: 'nova-pulse' },
+            { name: 'Void', id: 'void', effect: 'void-absorb' },
+            { name: 'Plasma', id: 'plasma', effect: 'plasma-flow' },
+            { name: 'Crystal', id: 'crystal', effect: 'crystal-refract' },
+            { name: 'Neon', id: 'neon', effect: 'neon-glow' },
+            { name: 'Hologram', id: 'hologram', effect: 'hologram-shift' },
+            { name: 'Fractal', id: 'fractal', effect: 'fractal-zoom' },
+            { name: 'Laser', id: 'laser', effect: 'laser-beam' },
+            { name: 'Particle', id: 'particle', effect: 'particle-burst' },
+            { name: 'Energy', id: 'energy', effect: 'energy-crackle' },
+            { name: 'Matrix', id: 'matrix', effect: 'matrix-rain' },
+            { name: 'Cyber', id: 'cyber', effect: 'cyber-grid' },
+            { name: 'Digital', id: 'digital', effect: 'digital-noise' },
+            { name: 'Glitch', id: 'glitch', effect: 'glitch-corrupt' }
+        ];
+
+        container.innerHTML = pixelTypes.map(type => 
+            `<div class="pixel-type-btn ${type.effect}" data-type="${type.id}" onclick="pixelBuilder.selectPixelType('${type.id}')">
+                ${type.name}
+            </div>`
+        ).join('');
+
+        console.log(`✅ Added ${pixelTypes.length} pixel types to pixelLibrary`);
+    }
+
+    generateSpriteLibrary() {
+        console.log('🎮 generateSpriteLibrary() called');
+        const container = document.getElementById('spriteLibrary');
+        if (!container) {
+            console.error('❌ spriteLibrary container not found');
+            return;
+        }
+
+        const sprites = [
+            { name: 'Spiral Galaxy', id: 'spiral', symbol: '🌀' },
+            { name: 'Nebula Cloud', id: 'nebula', symbol: '☁️' },
+            { name: 'Star Burst', id: 'starburst', symbol: '✨' },
+            { name: 'Black Hole', id: 'blackhole', symbol: '🕳️' },
+            { name: 'Comet', id: 'comet', symbol: '☄️' },
+            { name: 'Solar Flare', id: 'flare', symbol: '🔥' },
+            { name: 'Ring System', id: 'rings', symbol: '⭕' },
+            { name: 'Wormhole', id: 'wormhole', symbol: '🌀' },
+            { name: 'Pulsar', id: 'pulsar', symbol: '💫' }
+        ];
+
+        container.innerHTML = sprites.map(sprite => 
+            `<div class="sprite-btn" data-sprite="${sprite.id}" onclick="pixelBuilder.selectSprite('${sprite.id}')">
+                <span class="sprite-icon">${sprite.symbol}</span>
+                <span class="sprite-name">${sprite.name}</span>
+            </div>`
+        ).join('');
+
+        console.log(`✅ Added ${sprites.length} sprites to spriteLibrary`);
+    }
+
+    generatePatternLibrary() {
+        console.log('🔮 generatePatternLibrary() called');
+        const container = document.getElementById('patternLibrary');
+        if (!container) {
+            console.error('❌ patternLibrary container not found');
+            return;
+        }
+
+        const patterns = [
+            { name: 'Cyber Mesh', id: 'cybermesh', style: 'pattern-cyber' },
+            { name: 'Neural Net', id: 'neural', style: 'pattern-neural' },
+            { name: 'Data Stream', id: 'datastream', style: 'pattern-data' },
+            { name: 'Circuit Board', id: 'circuit', style: 'pattern-circuit' },
+            { name: 'Hex Grid', id: 'hexgrid', style: 'pattern-hex' },
+            { name: 'Wave Form', id: 'waveform', style: 'pattern-wave' }
+        ];
+
+        container.innerHTML = patterns.map(pattern => 
+            `<div class="pattern-btn ${pattern.style}" data-pattern="${pattern.id}" onclick="pixelBuilder.selectPattern('${pattern.id}')">
+                ${pattern.name}
+            </div>`
+        ).join('');
+
+        console.log(`✅ Added ${patterns.length} patterns to patternLibrary`);
+    }
+
+    generateColorPicker() {
+        console.log('🎨 generateColorPicker() called');
+        const container = document.getElementById('colorPicker');
+        if (!container) {
+            console.error('❌ colorPicker container not found');
+            return;
+        }
+
+        const colors = [
+            '#ff00ff', '#00ffff', '#ffff00', '#ff0080',
+            '#8000ff', '#0080ff', '#ff8000', '#80ff00',
+            '#ff0040', '#4000ff', '#00ff80', '#ff4000',
+            '#0040ff', '#80ff40', '#ff0020', '#2000ff',
+            '#00ff40', '#ff2000', '#0020ff', '#40ff80'
+        ];
+
+        const colorSwatches = colors.map(color => 
+            `<div class="color-swatch" style="background-color: ${color}" 
+                  data-color="${color}" onclick="pixelBuilder.selectColor('${color}')"></div>`
+        ).join('');
+
+        container.innerHTML = `<div class="color-swatches">${colorSwatches}</div>`;
+        console.log(`✅ Added ${colors.length} color swatches to colorPicker`);
+    }
+
+    // Selection methods
+    selectPixelType(type) {
+        this.currentPixelType = type;
+        console.log(`🎯 Selected pixel type: ${type}`);
+        
+        // Add visual feedback
+        document.querySelectorAll('.pixel-type-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-type="${type}"]`)?.classList.add('active');
+    }
+
+    selectSprite(sprite) {
+        this.currentSprite = sprite;
+        console.log(`🎮 Selected sprite: ${sprite}`);
+        
+        document.querySelectorAll('.sprite-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-sprite="${sprite}"]`)?.classList.add('active');
+    }
+
+    selectPattern(pattern) {
+        this.currentPattern = pattern;
+        console.log(`🔮 Selected pattern: ${pattern}`);
+        
+        document.querySelectorAll('.pattern-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-pattern="${pattern}"]`)?.classList.add('active');
+    }
+
+    selectColor(color) {
+        this.currentColor = color;
+        console.log(`🎨 Selected color: ${color}`);
+        
+        document.querySelectorAll('.color-swatch').forEach(swatch => swatch.classList.remove('active'));
+        document.querySelector(`[data-color="${color}"]`)?.classList.add('active');
+    }
+
+    // EPIC RANDOMIZE WITH ANIMATIONS!
+    epicRandomize() {
+        console.log('🎲 EPIC RANDOMIZE ACTIVATED!');
+        
+        // Save state before randomizing
+        this.history.saveState();
+        
+        // Clear existing effects
+        this.activeEffects = [];
+        this.particleSystems = [];
+        this.geometricAnimations = [];
+        
+        // Create random animated effects across the canvas
+        const effectCount = 20 + Math.random() * 30;
+        
+        for (let i = 0; i < effectCount; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            const effectType = Math.random();
+            
+            if (effectType < 0.3) {
+                // Quantum effect
+                this.activeEffects.push({
+                    type: 'quantum',
+                    x: x,
+                    y: y,
+                    life: 3 + Math.random() * 2
+                });
+            } else if (effectType < 0.6) {
+                // Geometric animation
+                this.geometricAnimations.push({
+                    type: Math.random() < 0.5 ? 'spiral' : 'mandala',
+                    x: x,
+                    y: y,
+                    speed: 0.5 + Math.random(),
+                    life: 4 + Math.random() * 3
+                });
+            } else {
+                // Particle system
+                this.createParticleSystem(x, y);
+            }
+        }
+        
+        // Add some chaos effects
+        for (let i = 0; i < 10; i++) {
+            this.activeEffects.push({
+                type: 'chaos',
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                life: 2 + Math.random() * 3
             });
         }
-    })();
-    </script>
-    
-    <!-- GIF Library with Worker Fix -->
-    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js"></script>
-    <script>
-        // Fix for GIF.js worker CORS issue
-        window.gifWorkerReady = false;
-        if (typeof GIF !== 'undefined') {
-            // Fetch the worker script and create a blob URL to avoid CORS
-            fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js')
-                .then(response => {
-                    if (!response.ok) throw new Error('Worker fetch failed');
-                    return response.blob();
-                })
-                .then(blob => {
-                    const workerUrl = URL.createObjectURL(blob);
-                    // Override the default worker script path
-                    const originalGIF = window.GIF;
-                    window.GIF = function(options) {
-                        options = options || {};
-                        options.workerScript = workerUrl;
-                        return new originalGIF(options);
-                    };
-                    // Copy static properties
-                    Object.setPrototypeOf(window.GIF, originalGIF);
-                    Object.assign(window.GIF, originalGIF);
-                    window.gifWorkerReady = true;
-                    console.log('✅ GIF worker loaded successfully');
-                })
-                .catch(error => {
-                    console.warn('⚠️ GIF worker failed to load:', error);
-                    window.gifWorkerReady = false;
-                });
-        }
-    </script>
-</head>
-<body>
-    <div class="app-container">
-        <div class="header">
-            <h1>◈ PIXEL FORGE MATRIX v3.0 ◈</h1>
-        </div>
         
-        <div class="sidebar">
-            <h3>◆ QUANTUM TEXTURES ◆</h3>
-            <div class="pixel-library" id="pixelLibrary">
-                <!-- Pixel items will be generated here -->
-            </div>
-            
-            <h3>◆ GEOMETRIC CONSTRUCTS ◆</h3>
-            <div class="sprite-library" id="spriteLibrary">
-                <!-- Sprite items will be generated here -->
-            </div>
-            
-            <h3>◆ BACKGROUND GENERATORS ◆</h3>
-            <div class="sprite-library" id="patternLibrary">
-                <!-- Pattern items will be generated here -->
-            </div>
-        </div>
-        
-        <div class="main-canvas">
-            <canvas id="canvas" width="800" height="600" style="image-rendering: pixelated;"></canvas>
-            <canvas id="gridOverlay" class="grid-overlay" width="800" height="600"></canvas>
-        </div>
-        
-        <div class="tools">
-            <div class="tool-section">
-                <h4>◇ TOOLS ◇</h4>
-                <button class="tool-btn active" id="paintTool">◈ PAINT</button>
-                <button class="tool-btn" id="eraseTool">◇ ERASE</button>
-                <button class="tool-btn" id="fillTool">◆ FILL</button>
-                <button class="tool-btn" id="pickTool">◉ SAMPLE</button>
-                <button class="tool-btn" id="sprayTool">※ SPRAY</button>
-            </div>
-            
-            <div class="tool-section">
-                <h4>◇ HISTORY ◇</h4>
-                <div class="undo-redo-container">
-                    <button class="undo-redo-btn" id="undoBtn" title="Undo (Ctrl+Z)">↶ UNDO</button>
-                    <button class="undo-redo-btn" id="redoBtn" title="Redo (Ctrl+Y)">↷ REDO</button>
-                </div>
-            </div>
-            
-            <div class="tool-section">
-                <h4>◇ BRUSH SIZE ◇</h4>
-                <div class="brush-size">
-                    <button class="size-btn active" data-size="1">1</button>
-                    <button class="size-btn" data-size="3">3</button>
-                    <button class="size-btn" data-size="6">6</button>
-                    <button class="size-btn" data-size="12">12</button>
-                </div>
-            </div>
-            
-            <div class="tool-section">
-                <h4>◇ SPECTRUM ◇</h4>
-                <div class="color-picker" id="colorPicker">
-                    <!-- Color swatches will be generated here -->
-                </div>
-            </div>
-            
-            <div class="tool-section">
-                <button class="tool-btn" id="retrowaveBtn">◈ RETROWAVE</button>
-                <button class="tool-btn" id="colorCycleBtn">◇ COLOR CYCLE</button>
-                <button class="tool-btn" id="recordGifBtn">◉ RECORD GIF</button>
-                <button class="tool-btn" id="storyModeBtn">🌌 STORY MODE</button>
-                <button class="tool-btn" id="randomize">◈ RANDOMIZE</button>
-                <button class="tool-btn" id="clearCanvas">◇ PURGE</button>
-                <button class="tool-btn" id="toggleGrid">◆ GRID</button>
-                <button class="tool-btn" id="saveImage">◉ EXPORT</button>
-            </div>
-        </div>
-        
-        <div class="footer">
-            <div class="performance-stats">
-                <span>XY: <span id="coords">0, 0</span></span>
-                <span>PIXELS: <span id="pixelCount">0</span></span>
-                <span>FPS: <span id="fps">60</span></span>
-            </div>
-            <div class="mode-indicator" id="modeIndicator">PAINT MODE</div>
-        </div>
-    </div>
+        console.log(`🌪️ Created ${effectCount} animated effects!`);
+        this.performanceMonitor.addEffect();
+    }
 
-    <script src="script.js"></script>
-</body>
-</html>
+    createParticleSystem(x, y) {
+        const particleCount = 20 + Math.random() * 30;
+        const particles = [];
+        
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                r: Math.floor(Math.random() * 255),
+                g: Math.floor(Math.random() * 255),
+                b: Math.floor(Math.random() * 255),
+                life: 1 + Math.random(),
+                gravity: Math.random() * 0.1
+            });
+        }
+        
+        this.particleSystems.push({ particles });
+    }
+
+    // Touch events for mobile magic
+    onTouchStart(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        this.isDrawing = true;
+        this.lastPos = { x, y };
+        
+        // Create touch trail
+        this.createTouchTrail(x, y, 'fast');
+    }
+
+    onTouchMove(e) {
+        e.preventDefault();
+        if (!this.isDrawing) return;
+        
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // Calculate speed for effect intensity
+        const dx = x - this.lastPos.x;
+        const dy = y - this.lastPos.y;
+        const speed = Math.sqrt(dx * dx + dy * dy);
+        
+        // Create trail based on speed
+        const intensity = speed > 10 ? 'lightning' : speed > 5 ? 'flowing' : 'growing';
+        this.createTouchTrail(x, y, intensity);
+        
+        this.lastPos = { x, y };
+    }
+
+    onTouchEnd(e) {
+        e.preventDefault();
+        this.isDrawing = false;
+        
+        // Create explosion effect at end point
+        if (this.lastPos) {
+            this.createTouchTrail(this.lastPos.x, this.lastPos.y, 'exploding');
+        }
+    }
+
+    createTouchTrail(x, y, mode) {
+        const trail = {
+            mode: mode.toUpperCase(),
+            points: []
+        };
+        
+        // Add trail points
+        for (let i = 0; i < 5; i++) {
+            trail.points.push({
+                x: x + (Math.random() - 0.5) * 10,
+                y: y + (Math.random() - 0.5) * 10,
+                r: Math.floor(Math.random() * 255),
+                g: Math.floor(Math.random() * 255),
+                b: Math.floor(Math.random() * 255),
+                life: 1
+            });
+        }
+        
+        this.touchTrails.push(trail);
+    }
+
+    // Mouse events
+    onMouseDown(e) {
+        this.isDrawing = true;
+        const pos = this.getMousePos(e);
+        this.lastPos = pos;
+        
+        if (this.currentTool === 'paint') {
+            this.setPixel(pos.x, pos.y, this.currentColor);
+        } else if (this.currentTool === 'sample') {
+            this.sampleColor(pos.x, pos.y);
+        }
+    }
+
+    onMouseMove(e) {
+        if (!this.isDrawing) return;
+        
+        const pos = this.getMousePos(e);
+        this.updateCoordinates(pos.x, pos.y);
+        
+        if (this.currentTool === 'paint') {
+            this.drawLine(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
+        } else if (this.currentTool === 'erase') {
+            this.eraseLine(this.lastPos.x, this.lastPos.y, pos.x, pos.y);
+        }
+        
+        this.lastPos = pos;
+    }
+
+    onMouseUp(e) {
+        if (this.isDrawing) {
+            this.isDrawing = false;
+            this.history.saveState();
+        }
+    }
+
+    getMousePos(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        return {
+            x: Math.floor((e.clientX - rect.left) / this.pixelSize),
+            y: Math.floor((e.clientY - rect.top) / this.pixelSize)
+        };
+    }
+
+    setPixel(x, y, color) {
+        if (x < 0 || y < 0 || x >= this.canvas.width/this.pixelSize || y >= this.canvas.height/this.pixelSize) {
+            return;
+        }
+        
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x * this.pixelSize, y * this.pixelSize, this.pixelSize, this.pixelSize);
+        this.performanceMonitor.addPixels(1);
+    }
+
+    drawLine(x0, y0, x1, y1) {
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+        const sx = x0 < x1 ? 1 : -1;
+        const sy = y0 < y1 ? 1 : -1;
+        let err = dx - dy;
+
+        while (true) {
+            for (let bx = 0; bx < this.brushSize; bx++) {
+                for (let by = 0; by < this.brushSize; by++) {
+                    this.setPixel(x0 + bx, y0 + by, this.currentColor);
+                }
+            }
+
+            if (x0 === x1 && y0 === y1) break;
+            const e2 = 2 * err;
+            if (e2 > -dy) { err -= dy; x0 += sx; }
+            if (e2 < dx) { err += dx; y0 += sy; }
+        }
+    }
+
+    eraseLine(x0, y0, x1, y1) {
+        this.drawLine(x0, y0, x1, y1); // Use transparent for erasing
+        // Note: Implement proper erasing logic here
+    }
+
+    // Tool and brush methods
+    setTool(tool) {
+        this.currentTool = tool;
+        this.updateToolUI();
+        console.log(`🔧 Tool changed to: ${tool}`);
+    }
+
+    setBrushSize(size) {
+        this.brushSize = size;
+        this.updateBrushSizeUI();
+        console.log(`🖌️ Brush size changed to: ${size}`);
+    }
+
+    setColor(color) {
+        this.currentColor = color;
+        console.log(`🎨 Color changed to: ${color}`);
+    }
+
+    updateToolUI() {
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`${this.currentTool}Tool`)?.classList.add('active');
+    }
+
+    updateBrushSizeUI() {
+        document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-size="${this.brushSize}"]`)?.classList.add('active');
+    }
+
+    updateCoordinates(x, y) {
+        const coordsElement = document.getElementById('coords');
+        if (coordsElement) {
+            coordsElement.textContent = `${x}, ${y}`;
+        }
+    }
+
+    // Canvas operations
+    clearCanvas() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.history.saveState();
+        this.performanceMonitor.reset();
+        
+        // Clear all effects
+        this.activeEffects = [];
+        this.particleSystems = [];
+        this.geometricAnimations = [];
+        this.touchTrails = [];
+        
+        console.log('🧹 Canvas cleared');
+    }
+
+    toggleGrid() {
+        this.gridVisible = !this.gridVisible;
+        this.drawGrid();
+        console.log(`📐 Grid ${this.gridVisible ? 'shown' : 'hidden'}`);
+    }
+
+    drawGrid() {
+        if (!this.gridCtx) return;
+        
+        this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
+        
+        if (this.gridVisible) {
+            this.gridCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            this.gridCtx.lineWidth = 1;
+            
+            for (let x = 0; x < this.gridCanvas.width; x += this.pixelSize) {
+                this.gridCtx.beginPath();
+                this.gridCtx.moveTo(x, 0);
+                this.gridCtx.lineTo(x, this.gridCanvas.height);
+                this.gridCtx.stroke();
+            }
+            
+            for (let y = 0; y < this.gridCanvas.height; y += this.pixelSize) {
+                this.gridCtx.beginPath();
+                this.gridCtx.moveTo(0, y);
+                this.gridCtx.lineTo(this.gridCanvas.width, y);
+                this.gridCtx.stroke();
+            }
+        }
+    }
+
+    // History operations
+    undo() {
+        if (this.history.undo()) {
+            console.log('↶ Undo performed');
+        }
+    }
+
+    redo() {
+        if (this.history.redo()) {
+            console.log('↷ Redo performed');
+        }
+    }
+
+    // Story Mode integration
+    launchStoryMode() {
+        console.log('🌌 Launching Story Mode...');
+        
+        // Update mode indicator if it exists
+        const modeIndicator = document.getElementById('modeIndicator');
+        if (modeIndicator) {
+            modeIndicator.textContent = '🌌 LAUNCHING COSMIC STORYTELLER';
+        }
+        
+        // Create cosmic transition effect
+        this.createCosmicTransition();
+        
+        // Navigate to storyteller after animation
+        setTimeout(() => {
+            window.location.href = '/storyteller';
+        }, 1500);
+    }
+
+    createCosmicTransition() {
+        // Create expanding cosmic rings
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                
+                this.activeEffects.push({
+                    type: 'nova',
+                    x: centerX,
+                    y: centerY,
+                    life: 1.5
+                });
+            }, i * 200);
+        }
+    }
+
+    // Utility methods
+    saveImage() {
+        const link = document.createElement('a');
+        link.download = `pixel-art-${Date.now()}.png`;
+        link.href = this.canvas.toDataURL();
+        link.click();
+        console.log('💾 Image saved');
+    }
+
+    sampleColor(x, y) {
+        const imageData = this.ctx.getImageData(x * this.pixelSize, y * this.pixelSize, 1, 1);
+        const [r, g, b] = imageData.data;
+        const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+        this.setColor(hex);
+        console.log(`🎨 Sampled color: ${hex}`);
+    }
+
+    onKeyDown(e) {
+        // Keyboard shortcuts
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+                case 'z':
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        this.redo();
+                    } else {
+                        this.undo();
+                    }
+                    break;
+                case 's':
+                    e.preventDefault();
+                    this.saveImage();
+                    break;
+            }
+        }
+        
+        // Tool shortcuts
+        switch (e.key) {
+            case 'p': this.setTool('paint'); break;
+            case 'e': this.setTool('erase'); break;
+            case 'f': this.setTool('fill'); break;
+            case 'i': this.setTool('sample'); break;
+            case 'g': this.toggleGrid(); break;
+            case 'r': this.epicRandomize(); break;
+        }
+    }
+
+    toggleGifRecording() {
+        // GIF recording functionality would go here
+        console.log('🎬 GIF recording toggled');
+    }
+
+    activateRetrowave() {
+        console.log('🌈 Retrowave mode activated!');
+        // Create retrowave color effects across the canvas
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * this.canvas.width;
+            const y = Math.random() * this.canvas.height;
+            
+            // Retrowave color palette
+            const colors = ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            
+            this.activeEffects.push({
+                type: 'quantum',
+                x: x,
+                y: y,
+                life: 2 + Math.random() * 3,
+                color: color
+            });
+        }
+        this.history.saveState();
+    }
+
+    toggleColorCycle() {
+        console.log('🎨 Color cycle toggled!');
+        // Toggle automatic color cycling
+        this.colorCycling = !this.colorCycling;
+        
+        if (this.colorCycling) {
+            this.startColorCycle();
+        } else {
+            this.stopColorCycle();
+        }
+    }
+
+    startColorCycle() {
+        this.colorCycleInterval = setInterval(() => {
+            const colors = ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff', '#06ffa5', '#00ffff'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            this.setColor(randomColor);
+        }, 1000);
+    }
+
+    stopColorCycle() {
+        if (this.colorCycleInterval) {
+            clearInterval(this.colorCycleInterval);
+            this.colorCycleInterval = null;
+        }
+    }
+}
+
+// Initialize when DOM is loaded
+let pixelBuilder;
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM Content Loaded - Starting Pixel Forge Matrix...');
+    
+    // Add a small delay to ensure all elements are rendered
+    setTimeout(() => {
+        try {
+            // Detect if mobile
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                console.log('📱 Initializing mobile version...');
+                document.body.classList.add('mobile');
+            } else {
+                console.log('💻 Initializing desktop version...');
+            }
+            
+            // Verify canvas elements exist before initializing
+            const pixelCanvas = document.getElementById('canvas');
+            const gridOverlay = document.getElementById('gridOverlay');
+            
+            console.log('🔍 Pre-check - canvas:', pixelCanvas);
+            console.log('🔍 Pre-check - gridOverlay:', gridOverlay);
+            
+            if (!pixelCanvas) {
+                console.error('❌ canvas element not found! Check your HTML.');
+                return;
+            }
+            
+            // Initialize the main application
+            pixelBuilder = new PixelCollageBuilder();
+            
+            // Make it globally accessible for onclick handlers
+            window.pixelBuilder = pixelBuilder;
+            
+            console.log('🌌 Pixel Forge Matrix initialized successfully!');
+            
+        } catch (error) {
+            console.error('❌ Failed to initialize Pixel Forge Matrix:', error);
+            console.error('Stack:', error.stack);
+        }
+    }, 100); // 100ms delay to ensure DOM is fully rendered
+});
