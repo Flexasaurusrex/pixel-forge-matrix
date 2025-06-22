@@ -285,6 +285,12 @@
             min-height: 20px;
             padding: 5px;
             background: transparent;
+            animation: statusGlow 2s infinite alternate;
+        }
+        
+        @keyframes statusGlow {
+            0% { text-shadow: 0 0 5px #00ff41; }
+            100% { text-shadow: 0 0 15px #00ff41, 0 0 25px #00ff41; }
         }
 
         .toast {
@@ -401,7 +407,7 @@
             </button>
         </div>
         
-        <div class="status" id="status">Touch canvas to paint • Tap buttons for magic</div>
+        <div class="status" id="status">🔥 Touch & drag for epic trail effects! • Tap buttons for magic</div>
     </div>
 
     <script>
@@ -428,15 +434,35 @@
                 this.recordingFrames = 0;
                 this.maxRecordingFrames = 60; // 2 seconds at 30fps for mobile
                 
-                // FIXED: Added all missing quantum pixel types for variety!
+                // 🔥 TOUCH TRAIL EFFECTS SYSTEM!
+                this.touchTrails = [];
+                this.touchHistory = [];
+                this.maxTrailLength = 10;
+                this.lastTouchTime = 0;
+                this.touchSpeed = 0;
+                this.touchIntensity = 1;
+                this.trailMode = 'growing'; // growing, exploding, flowing, ripple, spiral
+                this.trailModes = ['growing', 'exploding', 'flowing', 'ripple', 'spiral', 'fractal'];
+                
+                // FULL FEATURE SET - All 16 quantum effects + constructs + patterns!
                 this.pixelTypes = [
                     'quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex',
-                    'flicker', 'static', 'particle', 'lightning', 'temporal', 'surge'
+                    'flicker', 'static', 'particle', 'lightning', 'temporal', 'surge',
+                    'distort', 'fractal', 'phantom', 'cascade'
+                ];
+                
+                this.geometricTypes = [
+                    'fractal', 'mandala', 'spiral', 'matrix', 'hexagon', 'crystal', 'circuit', 'flower', 'galaxy'
+                ];
+                
+                this.backgroundTypes = [
+                    'cybermesh', 'neuralnet', 'datamatrix', 'circuitboard', 'hexgrid', 'starfield'
                 ];
                 
                 this.colors = [
                     '#00ff41', '#ff006e', '#00f5ff', '#ffff00', 
-                    '#ff4081', '#9c27b0', '#ff9800', '#4caf50'
+                    '#ff4081', '#9c27b0', '#ff9800', '#4caf50',
+                    '#03dac6', '#607d8b', '#795548', '#e91e63'
                 ];
                 
                 // Retrowave cycling colors
@@ -557,24 +583,71 @@
                 const y = Math.floor((clientY - rect.top) / this.gridSize);
                 
                 if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
-                    // Paint a 2x2 area for easier mobile touch
-                    for (let dx = 0; dx < 2; dx++) {
-                        for (let dy = 0; dy < 2; dy++) {
+                    // 🔥 Enhanced touch with speed-based effects
+                    const baseSize = Math.max(2, Math.floor(this.touchIntensity));
+                    
+                    // Paint main touch area with intensity-based size
+                    for (let dx = 0; dx < baseSize; dx++) {
+                        for (let dy = 0; dy < baseSize; dy++) {
                             const px = Math.min(x + dx, this.gridWidth - 1);
                             const py = Math.min(y + dy, this.gridHeight - 1);
                             
+                            // Choose effect based on speed
+                            let effectType = this.getRandomPixelType();
+                            if (this.touchSpeed > 15) {
+                                effectType = ['lightning', 'chaos', 'nova'][Math.floor(Math.random() * 3)];
+                            } else if (this.touchSpeed > 8) {
+                                effectType = ['particle', 'surge', 'vortex'][Math.floor(Math.random() * 3)];
+                            }
+                            
                             this.setPixel(px, py, {
                                 color: this.currentColor,
-                                type: this.getRandomPixelType()
+                                type: effectType
                             });
+                        }
+                    }
+                    
+                    // Create persistent trail effect
+                    if (this.touchSpeed > 5) {
+                        this.touchTrails.push({
+                            x: x,
+                            y: y,
+                            size: Math.floor(this.touchIntensity),
+                            color: this.currentColor,
+                            type: 'phantom',
+                            age: 0,
+                            alpha: 1.0
+                        });
+                    }
+                    
+                    // Speed-based particle scatter
+                    if (this.touchSpeed > 10) {
+                        const scatterCount = Math.floor(this.touchSpeed / 5);
+                        for (let i = 0; i < scatterCount; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const distance = Math.random() * this.touchIntensity * 3;
+                            const sx = x + Math.cos(angle) * distance;
+                            const sy = y + Math.sin(angle) * distance;
+                            
+                            if (sx >= 0 && sx < this.gridWidth && sy >= 0 && sy < this.gridHeight) {
+                                this.setPixel(Math.floor(sx), Math.floor(sy), {
+                                    color: this.getRandomColor(),
+                                    type: 'spectrum'
+                                });
+                            }
                         }
                     }
                 }
             }
             
             setPixel(x, y, pixel) {
-                this.pixels[x][y] = pixel;
-                this.drawPixel(x, y);
+                // Enhanced bounds checking and visibility
+                if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                    this.pixels[x][y] = pixel;
+                    this.drawPixel(x, y);
+                } else {
+                    console.warn(`Pixel out of bounds: ${x}, ${y} (grid: ${this.gridWidth}x${this.gridHeight})`);
+                }
             }
             
             drawPixel(x, y) {
@@ -659,7 +732,7 @@
                         }
                         break;
 
-                    // NEW EFFECTS - FIXED MOBILE VARIETY!
+                    // NEW EFFECTS - ADDED ALL MISSING ONES!
                     case 'flicker':
                         // Storm-like flickering
                         const flicker = Math.random() > 0.7;
@@ -735,15 +808,73 @@
                         this.ctx.fillStyle = pixel.color + surgeAlpha;
                         this.ctx.fillRect(surgeX, surgeY, surgeSize, surgeSize);
                         break;
+
+                    case 'distort':
+                        // Reality distortion field
+                        for (let i = 0; i < 6; i++) {
+                            const distortAngle = time + i;
+                            const distortRadius = Math.sin(time * 2 + i) * this.gridSize / 3;
+                            const dx = centerX + Math.cos(distortAngle) * distortRadius;
+                            const dy = centerY + Math.sin(distortAngle) * distortRadius;
+                            const alpha = Math.floor((Math.sin(time + i) * 0.5 + 0.5) * 150 + 50).toString(16);
+                            this.ctx.fillStyle = pixel.color + alpha;
+                            this.ctx.fillRect(dx - 1, dy - 1, 3, 3);
+                        }
+                        break;
+
+                    case 'fractal':
+                        // Fractal noise pattern
+                        for (let i = 0; i < 8; i++) {
+                            const scale = Math.pow(0.7, i % 3);
+                            const fx = centerX + Math.sin(time + i) * this.gridSize * scale;
+                            const fy = centerY + Math.cos(time + i * 1.3) * this.gridSize * scale;
+                            const fractalAlpha = Math.floor(scale * 200).toString(16);
+                            this.ctx.fillStyle = pixel.color + fractalAlpha;
+                            this.ctx.fillRect(fx, fy, scale * 3, scale * 3);
+                        }
+                        break;
+
+                    case 'phantom':
+                        // Phantom echo effect
+                        for (let echo = 0; echo < 4; echo++) {
+                            const delay = echo * 0.5;
+                            const px = centerX + Math.sin(time - delay) * this.gridSize / 4;
+                            const py = centerY + Math.cos(time - delay) * this.gridSize / 4;
+                            const echoAlpha = Math.floor((1 - echo / 4) * 150).toString(16);
+                            this.ctx.fillStyle = pixel.color + echoAlpha;
+                            this.ctx.fillRect(px - echo, py - echo, 2 + echo, 2 + echo);
+                        }
+                        break;
+
+                    case 'cascade':
+                        // Cascade wave effect
+                        for (let wave = 0; wave < 3; wave++) {
+                            const waveTime = time + wave;
+                            const amplitude = Math.sin(waveTime) * this.gridSize / 3;
+                            const cx = centerX + amplitude;
+                            const cy = centerY + Math.sin(waveTime * 2) * this.gridSize / 4;
+                            const waveAlpha = Math.floor((1 - wave / 3) * 200).toString(16);
+                            this.ctx.fillStyle = pixel.color + waveAlpha;
+                            this.ctx.fillRect(cx - wave, cy - wave, 2 + wave, 2 + wave);
+                        }
+                        break;
                         
                     default:
                         this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
                 }
             }
             
+            clearPixel(x, y) {
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+            }
+            
             startAnimationLoop() {
                 const animate = () => {
                     this.cycleTime += 0.05;
+                    
+                    // Process touch trails
+                    this.updateTouchTrails();
                     
                     // Redraw animated pixels
                     for (let x = 0; x < this.gridWidth; x++) {
@@ -774,6 +905,36 @@
                 animate();
             }
             
+            updateTouchTrails() {
+                // Update any persistent trail effects
+                this.touchTrails = this.touchTrails.filter(trail => {
+                    trail.age++;
+                    trail.size *= 1.1; // Grow over time
+                    trail.alpha *= 0.95; // Fade over time
+                    
+                    if (trail.alpha > 0.1 && trail.age < 30) {
+                        // Continue drawing trail effect
+                        const trailColor = trail.color + Math.floor(trail.alpha * 255).toString(16).padStart(2, '0');
+                        
+                        for (let i = 0; i < trail.size; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const radius = Math.random() * trail.size;
+                            const x = trail.x + Math.cos(angle) * radius;
+                            const y = trail.y + Math.sin(angle) * radius;
+                            
+                            if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                                this.setPixel(Math.floor(x), Math.floor(y), {
+                                    color: trailColor,
+                                    type: trail.type
+                                });
+                            }
+                        }
+                        return true; // Keep trail
+                    }
+                    return false; // Remove trail
+                });
+            }
+            
             applyColorCycling(x, y, pixel) {
                 const baseIndex = Math.floor(this.cycleTime + x * 0.1 + y * 0.1) % this.cycleColors.length;
                 const cycledColor = this.cycleColors[(baseIndex + Math.floor(this.cycleTime * 3)) % this.cycleColors.length];
@@ -784,31 +945,258 @@
             }
             
             isAnimatedType(type) {
-                return ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex', 'flicker', 'static', 'particle', 'lightning', 'temporal', 'surge'].includes(type);
+                return ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex', 'flicker', 'static', 'particle', 'lightning', 'temporal', 'surge', 'distort', 'fractal', 'phantom', 'cascade'].includes(type);
             }
             
-            clearPixel(x, y) {
-                this.ctx.fillStyle = '#000000';
-                this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+            // 🔥 INSANE TOUCH TRAIL EFFECTS SYSTEM!
+            
+            createTouchExplosion(centerX, centerY) {
+                const explosionSize = 3 + Math.floor(Math.random() * 4); // 3-6 radius
+                const explosionColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00'];
+                const explosionType = ['nova', 'chaos', 'lightning'][Math.floor(Math.random() * 3)];
+                
+                for (let radius = 1; radius <= explosionSize; radius++) {
+                    for (let angle = 0; angle < 360; angle += 30) {
+                        const rad = angle * Math.PI / 180;
+                        const x = centerX + Math.cos(rad) * radius;
+                        const y = centerY + Math.sin(rad) * radius;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: explosionColors[Math.floor(Math.random() * explosionColors.length)],
+                                type: explosionType
+                            });
+                        }
+                    }
+                }
+            }
+            
+            createTouchBurst(centerX, centerY) {
+                const burstSize = Math.floor(this.touchIntensity * 2) + 2; // 2-8 radius based on intensity
+                const burstEffects = ['spectrum', 'vortex', 'temporal'];
+                const burstType = burstEffects[Math.floor(Math.random() * burstEffects.length)];
+                
+                // Create radiating burst
+                for (let i = 0; i < 16; i++) {
+                    const angle = (i / 16) * Math.PI * 2;
+                    for (let r = 1; r <= burstSize; r++) {
+                        const x = centerX + Math.cos(angle) * r;
+                        const y = centerY + Math.sin(angle) * r;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: this.getRandomColor(),
+                                type: burstType
+                            });
+                        }
+                    }
+                }
+            }
+            
+            createTrailEffects(currentPos) {
+                if (this.touchHistory.length < 2) return;
+                
+                const intensity = Math.floor(this.touchIntensity);
+                const trailColor = this.cycleColors[Math.floor(this.cycleTime * 4) % this.cycleColors.length];
+                
+                switch(this.trailMode) {
+                    case 'growing':
+                        this.createGrowingTrail(currentPos, intensity, trailColor);
+                        break;
+                    case 'exploding':
+                        this.createExplodingTrail(currentPos, intensity, trailColor);
+                        break;
+                    case 'flowing':
+                        this.createFlowingTrail(currentPos, intensity, trailColor);
+                        break;
+                    case 'ripple':
+                        this.createRippleTrail(currentPos, intensity, trailColor);
+                        break;
+                    case 'spiral':
+                        this.createSpiralTrail(currentPos, intensity, trailColor);
+                        break;
+                    case 'fractal':
+                        this.createFractalTrail(currentPos, intensity, trailColor);
+                        break;
+                }
+            }
+            
+            createGrowingTrail(pos, intensity, color) {
+                // Growing organic patterns that expand from touch path
+                this.touchHistory.forEach((histPos, index) => {
+                    const age = this.touchHistory.length - index;
+                    const size = Math.max(1, intensity - age + 1);
+                    
+                    for (let i = 0; i < size * 2; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = Math.random() * size;
+                        const x = histPos.x + Math.cos(angle) * radius;
+                        const y = histPos.y + Math.sin(angle) * radius;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: color,
+                                type: 'quantum'
+                            });
+                        }
+                    }
+                });
+            }
+            
+            createExplodingTrail(pos, intensity, color) {
+                // Explosive bursts along the trail
+                if (Math.random() < 0.3) { // Random explosions
+                    const explosionSize = intensity + 1;
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const radius = Math.random() * explosionSize * 2;
+                        const x = pos.x + Math.cos(angle) * radius;
+                        const y = pos.y + Math.sin(angle) * radius;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: color,
+                                type: 'chaos'
+                            });
+                        }
+                    }
+                }
+            }
+            
+            createFlowingTrail(pos, intensity, color) {
+                // Flowing liquid-like patterns that follow touch
+                this.touchHistory.forEach((histPos, index) => {
+                    if (index === 0) return;
+                    
+                    const prevPos = this.touchHistory[index - 1];
+                    const flowDirection = {
+                        x: histPos.x - prevPos.x,
+                        y: histPos.y - prevPos.y
+                    };
+                    
+                    // Create perpendicular flow particles
+                    for (let i = 0; i < intensity * 3; i++) {
+                        const perpAngle = Math.atan2(flowDirection.y, flowDirection.x) + Math.PI / 2;
+                        const flowDistance = (Math.random() - 0.5) * intensity * 2;
+                        const x = histPos.x + Math.cos(perpAngle) * flowDistance;
+                        const y = histPos.y + Math.sin(perpAngle) * flowDistance;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: color,
+                                type: 'particle'
+                            });
+                        }
+                    }
+                });
+            }
+            
+            createRippleTrail(pos, intensity, color) {
+                // Ripple waves emanating from touch points
+                const rippleRadius = intensity * 2;
+                const rippleCount = 3;
+                
+                for (let ripple = 0; ripple < rippleCount; ripple++) {
+                    const radius = rippleRadius - ripple;
+                    if (radius <= 0) continue;
+                    
+                    for (let angle = 0; angle < 360; angle += 15) {
+                        const rad = angle * Math.PI / 180;
+                        const x = pos.x + Math.cos(rad) * radius;
+                        const y = pos.y + Math.sin(rad) * radius;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: color,
+                                type: 'surge'
+                            });
+                        }
+                    }
+                }
+            }
+            
+            createSpiralTrail(pos, intensity, color) {
+                // Spiral patterns that grow from touch
+                const spiralSize = intensity * 3;
+                const spiralDensity = intensity * 10;
+                
+                for (let i = 0; i < spiralDensity; i++) {
+                    const angle = (i / spiralDensity) * Math.PI * 8; // 4 full rotations
+                    const radius = (i / spiralDensity) * spiralSize;
+                    const x = pos.x + Math.cos(angle) * radius;
+                    const y = pos.y + Math.sin(angle) * radius;
+                    
+                    if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                        this.setPixel(Math.floor(x), Math.floor(y), {
+                            color: color,
+                            type: 'vortex'
+                        });
+                    }
+                }
+            }
+            
+            createFractalTrail(pos, intensity, color) {
+                // Self-similar fractal patterns
+                this.drawFractalBranch(pos.x, pos.y, intensity + 1, 0, intensity, color);
+            }
+            
+            drawFractalBranch(x, y, length, angle, depth, color) {
+                if (depth <= 0 || length < 1) return;
+                
+                // Draw current branch
+                for (let i = 0; i < length; i++) {
+                    const branchX = x + Math.cos(angle) * i;
+                    const branchY = y + Math.sin(angle) * i;
+                    
+                    if (branchX >= 0 && branchX < this.gridWidth && branchY >= 0 && branchY < this.gridHeight) {
+                        this.setPixel(Math.floor(branchX), Math.floor(branchY), {
+                            color: color,
+                            type: 'fractal'
+                        });
+                    }
+                }
+                
+                // Create sub-branches
+                if (depth > 1) {
+                    const newX = x + Math.cos(angle) * length;
+                    const newY = y + Math.sin(angle) * length;
+                    const newLength = length * 0.7;
+                    
+                    // Left branch
+                    this.drawFractalBranch(newX, newY, newLength, angle - Math.PI / 6, depth - 1, color);
+                    // Right branch
+                    this.drawFractalBranch(newX, newY, newLength, angle + Math.PI / 6, depth - 1, color);
+                }
             }
             
             getRandomPixelType() {
                 return this.pixelTypes[Math.floor(Math.random() * this.pixelTypes.length)];
             }
             
+            getRandomGeometric() {
+                return this.geometricTypes[Math.floor(Math.random() * this.geometricTypes.length)];
+            }
+            
+            getRandomBackground() {
+                return this.backgroundTypes[Math.floor(Math.random() * this.backgroundTypes.length)];
+            }
+            
             getRandomColor() {
                 return this.colors[Math.floor(Math.random() * this.colors.length)];
             }
             
-            // FIXED: Much better randomization algorithm!
+            // 🚀 FIXED MOBILE RANDOMIZE - GUARANTEED VISIBLE RESULTS!
             randomize() {
                 // Clear canvas with black
                 this.ctx.fillStyle = '#000000';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
                 
-                // Generate random scattered art
-                for (let i = 0; i < 250; i++) {
+                console.log(`🎯 Mobile canvas: ${this.gridWidth}x${this.gridHeight} pixels`);
+                
+                // Step 1: Always create a solid base layer first (guaranteed visibility)
+                const numBasePixels = 100 + Math.floor(Math.random() * 100); // 100-200 base pixels
+                for (let i = 0; i < numBasePixels; i++) {
                     const x = Math.floor(Math.random() * this.gridWidth);
                     const y = Math.floor(Math.random() * this.gridHeight);
                     
@@ -818,34 +1206,517 @@
                     });
                 }
                 
-                // OPTIONAL center element (only 40% chance now!)
+                // Step 2: Epic background patterns (80% chance, more visible)
+                if (Math.random() < 0.8) {
+                    const selectedBg = this.getRandomBackground();
+                    const numBgElements = 1 + Math.floor(Math.random() * 2); // 1-2 elements
+                    
+                    for (let i = 0; i < numBgElements; i++) {
+                        // Center the backgrounds more to ensure visibility
+                        const bgX = Math.floor(this.gridWidth * 0.25 + Math.random() * this.gridWidth * 0.5);
+                        const bgY = Math.floor(this.gridHeight * 0.25 + Math.random() * this.gridHeight * 0.5);
+                        this.drawBackgroundPattern(selectedBg, bgX, bgY);
+                    }
+                }
+                
+                // Step 3: Geometric constructs (guaranteed placement)
+                const numConstructs = 2 + Math.floor(Math.random() * 2); // 2-3 constructs
+                for (let i = 0; i < numConstructs; i++) {
+                    const geometric = this.getRandomGeometric();
+                    // Better positioning to ensure visibility
+                    const geoX = Math.floor(this.gridWidth * 0.2 + Math.random() * this.gridWidth * 0.6);
+                    const geoY = Math.floor(this.gridHeight * 0.2 + Math.random() * this.gridHeight * 0.6);
+                    const color = this.getRandomColor();
+                    this.drawGeometricConstruct(geometric, geoX, geoY, color);
+                }
+                
+                // Step 4: More scattered quantum texture effects (increased for visibility)
+                const numTextures = 150 + Math.floor(Math.random() * 100); // 150-250 effects
+                for (let i = 0; i < numTextures; i++) {
+                    const texture = this.getRandomPixelType();
+                    const x = Math.floor(Math.random() * this.gridWidth);
+                    const y = Math.floor(Math.random() * this.gridHeight);
+                    
+                    this.setPixel(x, y, {
+                        color: this.getRandomColor(),
+                        type: texture
+                    });
+                }
+                
+                // Step 5: Energy corridors (always create at least one)
+                const numCorridors = 1 + Math.floor(Math.random() * 2); // 1-2 corridors
+                for (let corridor = 0; corridor < numCorridors; corridor++) {
+                    this.drawEnergyCorridors();
+                }
+                
+                // Step 6: Reality tears (60% chance, more visible)
+                if (Math.random() < 0.6) {
+                    const numTears = 1 + Math.floor(Math.random() * 2); // 1-2 tears
+                    for (let tear = 0; tear < numTears; tear++) {
+                        this.drawRealityTears();
+                    }
+                }
+                
+                // Step 7: Optional focal point (40% chance, better positioning)
                 if (Math.random() < 0.4) {
-                    const centerEffects = ['nova', 'vortex', 'temporal', 'chaos', 'surge'];
-                    const centerType = centerEffects[Math.floor(Math.random() * centerEffects.length)];
-                    
-                    // Random center position (not always dead center)
-                    const centerX = Math.floor(this.gridWidth / 2) + Math.floor((Math.random() - 0.5) * 8);
-                    const centerY = Math.floor(this.gridHeight / 2) + Math.floor((Math.random() - 0.5) * 8);
-                    
-                    // Smaller, varied center pattern
-                    for (let radius = 1; radius <= 3; radius++) {
-                        for (let angle = 0; angle < 360; angle += 60) {
-                            const rad = angle * Math.PI / 180;
-                            const x = centerX + Math.cos(rad) * radius;
-                            const y = centerY + Math.sin(rad) * radius;
-                            
-                            if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
-                                this.setPixel(Math.floor(x), Math.floor(y), {
-                                    color: this.getRandomColor(), // Random color instead of white
-                                    type: centerType
-                                });
+                    this.drawFocalPoint();
+                }
+                
+                // Step 8: Border enhancement (add some edge pixels for frame effect)
+                if (Math.random() < 0.5) {
+                    this.drawBorderEffects();
+                }
+                
+                console.log(`✅ Generated art with base layer + patterns + constructs + effects`);
+                this.showStatus('🚀 Epic art generated!');
+                this.showToast('🎨 Random masterpiece created!');
+            }
+            
+            // 🎨 NEW MOBILE DRAWING FUNCTIONS - FULL FEATURE SET!
+            
+            drawBackgroundPattern(type, centerX, centerY) {
+                const size = 4; // Smaller size for mobile
+                
+                switch(type) {
+                    case 'cybermesh':
+                        this.drawCyberMesh(centerX, centerY, size);
+                        break;
+                    case 'neuralnet':
+                        this.drawNeuralNet(centerX, centerY, size);
+                        break;
+                    case 'datamatrix':
+                        this.drawDataMatrix(centerX, centerY, size);
+                        break;
+                    case 'circuitboard':
+                        this.drawCircuitBoard(centerX, centerY, size);
+                        break;
+                    case 'hexgrid':
+                        this.drawHexGrid(centerX, centerY, size);
+                        break;
+                    case 'starfield':
+                        this.drawStarField(centerX, centerY, size);
+                        break;
+                }
+            }
+            
+            drawGeometricConstruct(type, centerX, centerY, color) {
+                const size = 2 + Math.floor(Math.random() * 3); // Random size 2-4
+                
+                switch(type) {
+                    case 'fractal':
+                        this.drawFractal(centerX, centerY, size, color);
+                        break;
+                    case 'mandala':
+                        this.drawMandala(centerX, centerY, size, color);
+                        break;
+                    case 'spiral':
+                        this.drawSpiral(centerX, centerY, size, color);
+                        break;
+                    case 'matrix':
+                        this.drawMatrix(centerX, centerY, size, color);
+                        break;
+                    case 'hexagon':
+                        this.drawHexagon(centerX, centerY, size, color);
+                        break;
+                    case 'crystal':
+                        this.drawCrystal(centerX, centerY, size, color);
+                        break;
+                    case 'circuit':
+                        this.drawCircuit(centerX, centerY, size, color);
+                        break;
+                    case 'flower':
+                        this.drawFlower(centerX, centerY, size, color);
+                        break;
+                    case 'galaxy':
+                        this.drawGalaxy(centerX, centerY, size, color);
+                        break;
+                }
+            }
+            
+            // Background pattern implementations (mobile-optimized with bounds checking)
+            drawCyberMesh(centerX, centerY, size) {
+                const gridSize = 2;
+                size = Math.min(size, 8); // Limit size for mobile
+                
+                for (let x = -size; x <= size; x += gridSize) {
+                    for (let y = -size; y <= size; y += gridSize) {
+                        const px = centerX + x;
+                        const py = centerY + y;
+                        
+                        // Bounds check before drawing
+                        if (px >= 0 && px < this.gridWidth && py >= 0 && py < this.gridHeight) {
+                            this.setPixel(px, py, { color: '#00ff41', type: 'quantum' });
+                        }
+                        
+                        if (Math.random() > 0.5 && px + 1 < this.gridWidth) {
+                            this.setPixel(px + 1, py, { color: '#00ff41', type: 'static' });
+                        }
+                        
+                        if (Math.random() > 0.5 && py + 1 < this.gridHeight) {
+                            this.setPixel(px, py + 1, { color: '#00ff41', type: 'static' });
+                        }
+                    }
+                }
+            }
+            
+            drawNeuralNet(centerX, centerY, size) {
+                const neurons = [];
+                size = Math.min(size, 6); // Limit size for mobile
+                
+                // Create neurons within bounds
+                for (let i = 0; i < 8; i++) {
+                    const neuronX = Math.max(2, Math.min(this.gridWidth - 3, centerX + (Math.random() - 0.5) * size * 2));
+                    const neuronY = Math.max(2, Math.min(this.gridHeight - 3, centerY + (Math.random() - 0.5) * size * 2));
+                    neurons.push({ x: neuronX, y: neuronY });
+                }
+                
+                // Connect neurons with bounds checking
+                for (let i = 0; i < neurons.length; i++) {
+                    for (let j = i + 1; j < neurons.length; j++) {
+                        const dist = Math.sqrt(
+                            Math.pow(neurons[i].x - neurons[j].x, 2) + 
+                            Math.pow(neurons[i].y - neurons[j].y, 2)
+                        );
+                        
+                        if (dist < size) {
+                            const steps = Math.floor(dist);
+                            for (let step = 0; step <= steps; step++) {
+                                const t = step / steps;
+                                const x = Math.floor(neurons[i].x + t * (neurons[j].x - neurons[i].x));
+                                const y = Math.floor(neurons[i].y + t * (neurons[j].y - neurons[i].y));
+                                if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                                    this.setPixel(x, y, { color: '#ff006e', type: 'particle' });
+                                }
                             }
                         }
                     }
                 }
                 
-                this.showStatus('🚀 Epic art generated!');
-                this.showToast('🎨 Random masterpiece created!');
+                // Draw neurons
+                neurons.forEach(neuron => {
+                    this.setPixel(Math.floor(neuron.x), Math.floor(neuron.y), { 
+                        color: '#ff006e', 
+                        type: 'nova' 
+                    });
+                });
+            }
+            
+            drawDataMatrix(centerX, centerY, size) {
+                const blockSize = 2;
+                
+                for (let x = -size; x <= size; x += blockSize) {
+                    for (let y = -size; y <= size; y += blockSize) {
+                        const px = centerX + x;
+                        const py = centerY + y;
+                        const blockType = Math.random();
+                        
+                        if (blockType > 0.7) {
+                            this.setPixel(px, py, { color: '#00f5ff', type: 'chaos' });
+                            this.setPixel(px + 1, py + 1, { color: '#00f5ff', type: 'chaos' });
+                        } else if (blockType > 0.4) {
+                            this.setPixel(px, py, { color: '#00f5ff', type: 'flicker' });
+                        } else if (blockType > 0.2) {
+                            this.setPixel(px, py, { color: '#ffffff', type: 'strobe' });
+                        }
+                    }
+                }
+            }
+            
+            drawCircuitBoard(centerX, centerY, size) {
+                // Draw traces
+                for (let i = -size; i <= size; i += 3) {
+                    this.setPixel(centerX + i, centerY, { color: '#ffff00', type: 'surge' });
+                    this.setPixel(centerX, centerY + i, { color: '#ffff00', type: 'surge' });
+                }
+                
+                // Add components
+                for (let x = -size; x <= size; x += 4) {
+                    for (let y = -size; y <= size; y += 4) {
+                        const px = centerX + x;
+                        const py = centerY + y;
+                        
+                        if (Math.random() > 0.7) {
+                            this.setPixel(px, py, { color: '#ff9800', type: 'nova' });
+                        }
+                    }
+                }
+            }
+            
+            drawHexGrid(centerX, centerY, size) {
+                const hexRadius = 2;
+                
+                for (let row = -size / 3; row <= size / 3; row++) {
+                    for (let col = -size / 3; col <= size / 3; col++) {
+                        const hexX = centerX + col * hexRadius * 1.5;
+                        const hexY = centerY + row * hexRadius * Math.sqrt(3) + (col % 2) * hexRadius * Math.sqrt(3) / 2;
+                        
+                        // Draw hexagon outline
+                        for (let side = 0; side < 6; side++) {
+                            const angle = (side * 60) * Math.PI / 180;
+                            const x = Math.floor(hexX + Math.cos(angle) * hexRadius);
+                            const y = Math.floor(hexY + Math.sin(angle) * hexRadius);
+                            this.setPixel(x, y, { color: '#9c27b0', type: 'cascade' });
+                        }
+                        
+                        // Optional center
+                        if (Math.random() > 0.8) {
+                            this.setPixel(Math.floor(hexX), Math.floor(hexY), { 
+                                color: '#ffffff', 
+                                type: 'spectrum' 
+                            });
+                        }
+                    }
+                }
+            }
+            
+            drawStarField(centerX, centerY, size) {
+                const numStars = 20;
+                
+                for (let i = 0; i < numStars; i++) {
+                    const starX = centerX + (Math.random() - 0.5) * size * 2;
+                    const starY = centerY + (Math.random() - 0.5) * size * 2;
+                    const starType = Math.random();
+                    
+                    if (starType > 0.8) {
+                        this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                            color: '#ffffff', 
+                            type: 'nova' 
+                        });
+                        // Add rays
+                        this.setPixel(Math.floor(starX - 1), Math.floor(starY), { 
+                            color: '#ffffff' + '80', 
+                            type: 'lightning' 
+                        });
+                        this.setPixel(Math.floor(starX + 1), Math.floor(starY), { 
+                            color: '#ffffff' + '80', 
+                            type: 'lightning' 
+                        });
+                    } else if (starType > 0.5) {
+                        this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                            color: '#4caf50', 
+                            type: 'strobe' 
+                        });
+                    } else {
+                        this.setPixel(Math.floor(starX), Math.floor(starY), { 
+                            color: '#4caf50' + '80', 
+                            type: 'quantum' 
+                        });
+                    }
+                }
+            }
+            
+            // Geometric construct implementations (mobile-optimized)
+            drawFractal(centerX, centerY, size, color) {
+                for (let i = 0; i < 3; i++) {
+                    const radius = size - i;
+                    for (let angle = 0; angle < 360; angle += 60) {
+                        const rad = (angle * Math.PI) / 180;
+                        const x = centerX + Math.cos(rad) * radius;
+                        const y = centerY + Math.sin(rad) * radius;
+                        this.setPixel(Math.floor(x), Math.floor(y), { color, type: 'fractal' });
+                    }
+                }
+            }
+            
+            drawMandala(centerX, centerY, size, color) {
+                for (let ring = 0; ring < 3; ring++) {
+                    const radius = ring * 2 + 1;
+                    for (let angle = 0; angle < 360; angle += 45) {
+                        const rad = (angle * Math.PI) / 180;
+                        const x = centerX + Math.cos(rad) * radius;
+                        const y = centerY + Math.sin(rad) * radius;
+                        this.setPixel(Math.floor(x), Math.floor(y), { color, type: 'nova' });
+                    }
+                }
+            }
+            
+            drawSpiral(centerX, centerY, size, color) {
+                for (let i = 0; i < size * 6; i++) {
+                    const angle = i * 0.6;
+                    const radius = i * 0.2;
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    this.setPixel(Math.floor(x), Math.floor(y), { color, type: 'vortex' });
+                }
+            }
+            
+            drawMatrix(centerX, centerY, size, color) {
+                for (let x = -size; x <= size; x++) {
+                    for (let y = -size; y <= size; y++) {
+                        if ((x + y) % 2 === 0) {
+                            this.setPixel(centerX + x, centerY + y, { color, type: 'static' });
+                        }
+                    }
+                }
+            }
+            
+            drawHexagon(centerX, centerY, size, color) {
+                for (let angle = 0; angle < 360; angle += 60) {
+                    const rad = (angle * Math.PI) / 180;
+                    for (let r = 1; r <= size; r++) {
+                        const x = centerX + Math.cos(rad) * r;
+                        const y = centerY + Math.sin(rad) * r;
+                        this.setPixel(Math.floor(x), Math.floor(y), { color, type: 'particle' });
+                    }
+                }
+            }
+            
+            drawCrystal(centerX, centerY, size, color) {
+                const points = [
+                    [0, -size], [size, 0], [0, size], [-size, 0],
+                    [size/2, -size/2], [size/2, size/2], [-size/2, size/2], [-size/2, -size/2]
+                ];
+                
+                points.forEach(([dx, dy]) => {
+                    this.setPixel(centerX + dx, centerY + dy, { color, type: 'spectrum' });
+                });
+            }
+            
+            drawCircuit(centerX, centerY, size, color) {
+                // Draw horizontal and vertical lines
+                for (let i = -size; i <= size; i++) {
+                    this.setPixel(centerX + i, centerY, { color, type: 'lightning' });
+                    this.setPixel(centerX, centerY + i, { color, type: 'lightning' });
+                }
+                // Junction point
+                this.setPixel(centerX, centerY, { color: '#ffffff', type: 'strobe' });
+            }
+            
+            drawFlower(centerX, centerY, size, color) {
+                // Center
+                this.setPixel(centerX, centerY, { color, type: 'nova' });
+                // Petals
+                for (let angle = 0; angle < 360; angle += 45) {
+                    const rad = (angle * Math.PI) / 180;
+                    const x = centerX + Math.cos(rad) * size;
+                    const y = centerY + Math.sin(rad) * size;
+                    this.setPixel(Math.floor(x), Math.floor(y), { color, type: 'phantom' });
+                }
+            }
+            
+            drawGalaxy(centerX, centerY, size, color) {
+                for (let i = 0; i < size * 4; i++) {
+                    const angle = i * 0.8 + Math.random() * 0.5;
+                    const radius = Math.sqrt(i) * 0.8 + Math.random();
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    this.setPixel(Math.floor(x), Math.floor(y), { color, type: 'chaos' });
+                }
+            }
+            
+            drawEnergyCorridors() {
+                // Ensure corridors stay within visible bounds
+                const startX = Math.floor(Math.random() * this.gridWidth);
+                const startY = Math.floor(Math.random() * this.gridHeight);
+                const endX = Math.floor(Math.random() * this.gridWidth);
+                const endY = Math.floor(Math.random() * this.gridHeight);
+                
+                const steps = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+                const corridorTextures = ['lightning', 'surge', 'particle'];
+                const corridorColors = ['#ffffff', '#00f5ff', '#ff006e'];
+                const corridorTexture = corridorTextures[Math.floor(Math.random() * corridorTextures.length)];
+                const corridorColor = corridorColors[Math.floor(Math.random() * corridorColors.length)];
+                
+                for (let step = 0; step <= steps; step++) {
+                    const t = step / steps;
+                    const x = Math.floor(startX + t * (endX - startX));
+                    const y = Math.floor(startY + t * (endY - startY));
+                    
+                    // Main corridor pixel
+                    this.setPixel(x, y, { color: corridorColor, type: corridorTexture });
+                    
+                    // Sparks (with bounds checking)
+                    if (Math.random() > 0.8) {
+                        const sparkX = x + Math.floor((Math.random() - 0.5) * 4);
+                        const sparkY = y + Math.floor((Math.random() - 0.5) * 4);
+                        if (sparkX >= 0 && sparkX < this.gridWidth && sparkY >= 0 && sparkY < this.gridHeight) {
+                            this.setPixel(sparkX, sparkY, { color: corridorColor, type: 'chaos' });
+                        }
+                    }
+                }
+                
+                console.log(`✅ Drew energy corridor from (${startX},${startY}) to (${endX},${endY})`);
+            }
+            
+            drawRealityTears() {
+                // Better positioning for mobile (avoid edges)
+                const tearCenterX = Math.floor(this.gridWidth * 0.2 + Math.random() * this.gridWidth * 0.6);
+                const tearCenterY = Math.floor(this.gridHeight * 0.2 + Math.random() * this.gridHeight * 0.6);
+                
+                const tearColors = ['#8b00ff', '#ff006e', '#00f5ff'];
+                const tearColor = tearColors[Math.floor(Math.random() * tearColors.length)];
+                
+                for (let i = 0; i < 15; i++) {
+                    const tearX = tearCenterX + Math.floor((Math.random() - 0.5) * 8);
+                    const tearY = tearCenterY + Math.floor((Math.random() - 0.5) * 8);
+                    
+                    if (tearX >= 0 && tearX < this.gridWidth && tearY >= 0 && tearY < this.gridHeight) {
+                        this.setPixel(tearX, tearY, { color: tearColor, type: 'distort' });
+                    }
+                }
+                
+                console.log(`✅ Drew reality tear at (${tearCenterX},${tearCenterY})`);
+            }
+            
+            drawFocalPoint() {
+                const focalEffects = ['nova', 'vortex', 'temporal', 'chaos', 'surge'];
+                const focalType = focalEffects[Math.floor(Math.random() * focalEffects.length)];
+                
+                // Better positioning for mobile (center area)
+                const focalX = Math.floor(this.gridWidth * 0.3 + Math.random() * this.gridWidth * 0.4);
+                const focalY = Math.floor(this.gridHeight * 0.3 + Math.random() * this.gridHeight * 0.4);
+                
+                const maxRadius = 2 + Math.floor(Math.random() * 2); // 2-3 radius
+                const focalColors = ['#ffffff', '#ff006e', '#00f5ff', '#ffff00'];
+                
+                for (let radius = 1; radius <= maxRadius; radius++) {
+                    for (let angle = 0; angle < 360; angle += 60) {
+                        const rad = angle * Math.PI / 180;
+                        const x = Math.floor(focalX + Math.cos(rad) * radius);
+                        const y = Math.floor(focalY + Math.sin(rad) * radius);
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(x, y, {
+                                color: focalColors[Math.floor(Math.random() * focalColors.length)],
+                                type: focalType
+                            });
+                        }
+                    }
+                }
+            }
+            
+            drawBorderEffects() {
+                // Add some border sparkles for visual framing
+                const borderPixels = 20 + Math.floor(Math.random() * 20); // 20-40 border pixels
+                
+                for (let i = 0; i < borderPixels; i++) {
+                    const side = Math.floor(Math.random() * 4);
+                    let x, y;
+                    
+                    switch(side) {
+                        case 0: // Top
+                            x = Math.floor(Math.random() * this.gridWidth);
+                            y = Math.floor(Math.random() * 3);
+                            break;
+                        case 1: // Right
+                            x = this.gridWidth - 1 - Math.floor(Math.random() * 3);
+                            y = Math.floor(Math.random() * this.gridHeight);
+                            break;
+                        case 2: // Bottom
+                            x = Math.floor(Math.random() * this.gridWidth);
+                            y = this.gridHeight - 1 - Math.floor(Math.random() * 3);
+                            break;
+                        case 3: // Left
+                            x = Math.floor(Math.random() * 3);
+                            y = Math.floor(Math.random() * this.gridHeight);
+                            break;
+                    }
+                    
+                    this.setPixel(x, y, {
+                        color: this.getRandomColor(),
+                        type: ['quantum', 'strobe', 'spectrum'][Math.floor(Math.random() * 3)]
+                    });
+                }
             }
             
             toggleColorCycle() {
