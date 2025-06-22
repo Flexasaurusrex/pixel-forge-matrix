@@ -13,7 +13,15 @@ class CanvasHistory {
     }
 
     generatePixelLibrary() {
+        console.log('🔥 generatePixelLibrary() called');
         const library = document.getElementById('pixelLibrary');
+        console.log('Library element:', library);
+        
+        if (!library) {
+            console.error('❌ pixelLibrary element not found!');
+            return;
+        }
+        
         const pixelTypes = [
             { type: 'quantum', char: '⚛', color: '#00ff41', desc: 'QUANTUM DOT' },
             { type: 'chaos', char: '※', color: '#ff006e', desc: 'CHAOS FIELD' },
@@ -33,6 +41,8 @@ class CanvasHistory {
             { type: 'spectrum', char: '⬢', color: '#ffc107', desc: 'SPECTRUM SHIFT' }
         ];
         
+        console.log(`🎯 Creating ${pixelTypes.length} pixel items...`);
+        
         pixelTypes.forEach((pixel, index) => {
             const item = document.createElement('div');
             item.className = 'pixel-item';
@@ -49,6 +59,8 @@ class CanvasHistory {
                 item.classList.add('selected');
             }
         });
+        
+        console.log(`✅ Added ${library.children.length} items to pixelLibrary`);
     }
 
     generateSpriteLibrary() {
@@ -249,80 +261,135 @@ class CanvasHistory {
 
 class PixelCollageBuilder {
     constructor() {
-        this.canvas = document.getElementById('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.gridCanvas = document.getElementById('gridOverlay');
-        this.gridCtx = this.gridCanvas.getContext('2d');
+        console.log('🎯 PixelCollageBuilder constructor started');
         
-        // Initialize canvas history
-        this.history = new CanvasHistory(this.canvas);
-        
-        // Canvas setup
-        this.canvasSize = Math.min(800, 600);
-        this.pixelSize = 4;
-        this.gridWidth = this.canvasSize / this.pixelSize;
-        this.gridHeight = (this.canvasSize * 0.75) / this.pixelSize;
-        
-        this.canvas.width = this.gridWidth * this.pixelSize;
-        this.canvas.height = this.gridHeight * this.pixelSize;
-        this.gridCanvas.width = this.canvas.width;
-        this.gridCanvas.height = this.canvas.height;
-        
-        // State management
-        this.isDrawing = false;
-        this.currentTool = 'paint';
-        this.currentColor = '#00ff41';
-        this.currentPixelType = 'quantum';
-        this.currentBrushSize = 1;
-        this.pixels = [];
-        this.showGrid = true;
-        
-        // Animation and effects
-        this.animationTime = 0;
-        this.colorCycling = false;
-        this.retroPalette = 0;
-        this.lastUpdate = 0;
-        
-        // Retrowave palettes
-        this.retrowavePalettes = [
-            ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff'],
-            ['#ff0080', '#ff8000', '#ffff00', '#80ff00', '#00ff80'],
-            ['#e91e63', '#ff5722', '#ff9800', '#4caf50', '#2196f3'],
-            ['#ff1744', '#ff6d00', '#ffc107', '#00e676', '#00bcd4'],
-            ['#c51162', '#ff3d00', '#ff8f00', '#64dd17', '#00e5ff']
+        try {
+            // Validate required DOM elements exist
+            this.validateDOMElements();
+            
+            // Get canvas elements
+            this.canvas = document.getElementById('canvas');
+            this.ctx = this.canvas.getContext('2d');
+            this.gridCanvas = document.getElementById('gridOverlay');
+            this.gridCtx = this.gridCanvas.getContext('2d');
+            
+            console.log('✅ Canvas elements found');
+            
+            // Initialize canvas history
+            this.history = new CanvasHistory(this.canvas);
+            
+            // Canvas setup
+            this.canvasSize = Math.min(800, 600);
+            this.pixelSize = 4;
+            this.gridWidth = this.canvasSize / this.pixelSize;
+            this.gridHeight = (this.canvasSize * 0.75) / this.pixelSize;
+            
+            this.canvas.width = this.gridWidth * this.pixelSize;
+            this.canvas.height = this.gridHeight * this.pixelSize;
+            this.gridCanvas.width = this.canvas.width;
+            this.gridCanvas.height = this.canvas.height;
+            
+            console.log(`📐 Canvas size: ${this.canvas.width}x${this.canvas.height}`);
+            
+            // State management
+            this.isDrawing = false;
+            this.currentTool = 'paint';
+            this.currentColor = '#00ff41';
+            this.currentPixelType = 'quantum';
+            this.currentBrushSize = 1;
+            this.pixels = [];
+            this.showGrid = true;
+            
+            // Animation and effects
+            this.animationTime = 0;
+            this.colorCycling = false;
+            this.retroPalette = 0;
+            this.lastUpdate = 0;
+            
+            // Retrowave palettes
+            this.retrowavePalettes = [
+                ['#ff006e', '#fb5607', '#ffbe0b', '#8338ec', '#3a86ff'],
+                ['#ff0080', '#ff8000', '#ffff00', '#80ff00', '#00ff80'],
+                ['#e91e63', '#ff5722', '#ff9800', '#4caf50', '#2196f3'],
+                ['#ff1744', '#ff6d00', '#ffc107', '#00e676', '#00bcd4'],
+                ['#c51162', '#ff3d00', '#ff8f00', '#64dd17', '#00e5ff']
+            ];
+            
+            // Pixel types and their properties
+            this.pixelTypes = [
+                'quantum', 'chaos', 'flicker', 'strobe', 'static', 'distort',
+                'particle', 'lightning', 'temporal', 'nova', 'fractal', 'phantom',
+                'surge', 'cascade', 'vortex', 'spectrum'
+            ];
+            
+            this.animatedTypes = new Set([
+                'quantum', 'chaos', 'flicker', 'strobe', 'static', 'distort',
+                'particle', 'lightning', 'temporal', 'nova', 'fractal', 'phantom',
+                'surge', 'cascade', 'vortex', 'spectrum'
+            ]);
+            
+            console.log('🔧 State initialized');
+            
+            // Initialize pixels array
+            this.initializePixels();
+            
+            // Debug: Check if DOM elements exist
+            console.log('🔍 Checking DOM elements...');
+            console.log('pixelLibrary:', document.getElementById('pixelLibrary'));
+            console.log('spriteLibrary:', document.getElementById('spriteLibrary')); 
+            console.log('patternLibrary:', document.getElementById('patternLibrary'));
+            console.log('colorPicker:', document.getElementById('colorPicker'));
+            
+            // Generate UI elements
+            console.log('🎨 Generating UI elements...');
+            this.generatePixelLibrary();
+            this.generateSpriteLibrary();
+            this.generatePatternLibrary();
+            this.generateColorPicker();
+            console.log('✅ UI generation complete');
+            
+            // Setup event listeners and start animation
+            console.log('🎧 Setting up event listeners...');
+            this.setupEventListeners();
+            this.setupKeyboardShortcuts();
+            console.log('✅ Event listeners setup complete');
+            
+            this.drawGrid();
+            this.animate();
+            this.startFpsCounter();
+            
+            // Update UI
+            this.updateToolIndicator();
+            this.updateModeIndicator('Ready to create!');
+            this.updatePixelCount();
+            
+            console.log('🎉 PixelCollageBuilder initialization complete!');
+            
+        } catch (error) {
+            console.error('❌ Error in PixelCollageBuilder constructor:', error);
+            throw error;
+        }
+    }
+
+    validateDOMElements() {
+        const requiredElements = [
+            'canvas', 'gridOverlay', 'pixelLibrary', 'spriteLibrary', 
+            'patternLibrary', 'colorPicker', 'paintTool', 'eraseTool',
+            'undoBtn', 'redoBtn', 'retrowaveBtn', 'randomize'
         ];
         
-        // Pixel types and their properties
-        this.pixelTypes = [
-            'quantum', 'chaos', 'flicker', 'strobe', 'static', 'distort',
-            'particle', 'lightning', 'temporal', 'nova', 'fractal', 'phantom',
-            'surge', 'cascade', 'vortex', 'spectrum'
-        ];
+        const missing = [];
+        requiredElements.forEach(id => {
+            if (!document.getElementById(id)) {
+                missing.push(id);
+            }
+        });
         
-        this.animatedTypes = new Set([
-            'quantum', 'chaos', 'flicker', 'strobe', 'static', 'distort',
-            'particle', 'lightning', 'temporal', 'nova', 'fractal', 'phantom',
-            'surge', 'cascade', 'vortex', 'spectrum'
-        ]);
+        if (missing.length > 0) {
+            throw new Error(`Missing required DOM elements: ${missing.join(', ')}`);
+        }
         
-        // Initialize pixels array
-        this.initializePixels();
-        
-        // Generate UI elements
-        this.generatePixelLibrary();
-        this.generateSpriteLibrary();
-        this.generatePatternLibrary();
-        this.generateColorPicker();
-        
-        // Setup event listeners and start animation
-        this.setupEventListeners();
-        this.setupKeyboardShortcuts();
-        this.drawGrid();
-        this.animate();
-        
-        // Update UI
-        this.updateToolIndicator();
-        this.updateModeIndicator('Ready to create!');
+        console.log('✅ All required DOM elements found');
     }
 
     initializePixels() {
@@ -336,71 +403,96 @@ class PixelCollageBuilder {
     }
 
     setupEventListeners() {
-        // Mouse events
-        this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
-        this.canvas.addEventListener('mousemove', (e) => this.draw(e));
-        this.canvas.addEventListener('mouseup', () => this.stopDrawing());
-        this.canvas.addEventListener('mouseout', () => this.stopDrawing());
-        
-        // Tool buttons
-        document.getElementById('paintTool').addEventListener('click', () => this.setTool('paint'));
-        document.getElementById('eraseTool').addEventListener('click', () => this.setTool('erase'));
-        document.getElementById('fillTool').addEventListener('click', () => this.setTool('fill'));
-        document.getElementById('pickTool').addEventListener('click', () => this.setTool('sample'));
-        document.getElementById('sprayTool').addEventListener('click', () => this.setTool('spray'));
-        
-        // Brush size buttons
-        document.querySelectorAll('.size-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.setBrushSize(parseInt(e.target.dataset.size), e.target));
-        });
-        
-        // History buttons
-        document.getElementById('undoBtn').addEventListener('click', () => this.history.undo());
-        document.getElementById('redoBtn').addEventListener('click', () => this.history.redo());
-        
-        // Action buttons
-        document.getElementById('retrowaveBtn').addEventListener('click', () => this.cycleRetrowavePalette());
-        document.getElementById('colorCycleBtn').addEventListener('click', () => this.toggleColorCycling());
-        document.getElementById('recordGifBtn').addEventListener('click', () => this.toggleRecording());
-        document.getElementById('randomize').addEventListener('click', () => this.epicRandomize());
-        document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
-        document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
-        document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
-        
-        // Story Mode button - NEW! (conditional in case button doesn't exist yet)
-        const storyModeBtn = document.getElementById('storyModeBtn');
-        if (storyModeBtn) {
-            storyModeBtn.addEventListener('click', () => this.launchStoryMode());
+        try {
+            // Mouse events
+            this.canvas.addEventListener('mousedown', (e) => this.startDrawing(e));
+            this.canvas.addEventListener('mousemove', (e) => this.draw(e));
+            this.canvas.addEventListener('mouseup', () => this.stopDrawing());
+            this.canvas.addEventListener('mouseout', () => this.stopDrawing());
+            console.log('✅ Mouse events setup');
+            
+            // Tool buttons
+            const safeAddListener = (id, callback) => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('click', callback);
+                    console.log(`✅ ${id} listener added`);
+                } else {
+                    console.warn(`⚠️ Element ${id} not found`);
+                }
+            };
+            
+            safeAddListener('paintTool', () => this.setTool('paint'));
+            safeAddListener('eraseTool', () => this.setTool('erase'));
+            safeAddListener('fillTool', () => this.setTool('fill'));
+            safeAddListener('pickTool', () => this.setTool('sample'));
+            safeAddListener('sprayTool', () => this.setTool('spray'));
+            
+            // Brush size buttons
+            document.querySelectorAll('.size-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => this.setBrushSize(parseInt(e.target.dataset.size), e.target));
+            });
+            console.log('✅ Brush size buttons setup');
+            
+            // History buttons
+            safeAddListener('undoBtn', () => this.history.undo());
+            safeAddListener('redoBtn', () => this.history.redo());
+            
+            // Action buttons
+            safeAddListener('retrowaveBtn', () => this.cycleRetrowavePalette());
+            safeAddListener('colorCycleBtn', () => this.toggleColorCycling());
+            safeAddListener('recordGifBtn', () => this.toggleRecording());
+            safeAddListener('randomize', () => this.epicRandomize());
+            safeAddListener('clearCanvas', () => this.clearCanvas());
+            safeAddListener('toggleGrid', () => this.toggleGrid());
+            safeAddListener('saveImage', () => this.saveImage());
+            
+            // Story Mode button - NEW! (conditional in case button doesn't exist yet)
+            const storyModeBtn = document.getElementById('storyModeBtn');
+            if (storyModeBtn) {
+                storyModeBtn.addEventListener('click', () => this.launchStoryMode());
+                console.log('✅ Story Mode button setup');
+            }
+            
+            // Color picker
+            const colorPicker = document.getElementById('colorPicker');
+            if (colorPicker) {
+                colorPicker.addEventListener('change', (e) => {
+                    this.currentColor = e.target.value;
+                });
+                console.log('✅ Color picker setup');
+            }
+            
+            // Pixel type buttons
+            this.pixelTypes.forEach(type => {
+                const btn = document.getElementById(`${type}Btn`);
+                if (btn) {
+                    btn.addEventListener('click', () => this.setPixelType(type));
+                }
+            });
+            
+            // Geometric construct buttons
+            ['fractal', 'mandala', 'spiral', 'matrix', 'hexagon', 'crystal', 'circuit', 'flower', 'galaxy'].forEach(type => {
+                const btn = document.getElementById(`construct${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
+                if (btn) {
+                    btn.addEventListener('click', () => this.drawGeometricConstruct(type));
+                }
+            });
+            
+            // Background generator buttons
+            ['cybermesh', 'neuralnet', 'datamatrix', 'circuitboard', 'hexgrid', 'starfield'].forEach(type => {
+                const btn = document.getElementById(`bg${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
+                if (btn) {
+                    btn.addEventListener('click', () => this.generateBackground(type));
+                }
+            });
+            
+            console.log('✅ All event listeners setup complete');
+            
+        } catch (error) {
+            console.error('❌ Error setting up event listeners:', error);
+            throw error;
         }
-        
-        // Color picker
-        document.getElementById('colorPicker').addEventListener('change', (e) => {
-            this.currentColor = e.target.value;
-        });
-        
-        // Pixel type buttons
-        this.pixelTypes.forEach(type => {
-            const btn = document.getElementById(`${type}Btn`);
-            if (btn) {
-                btn.addEventListener('click', () => this.setPixelType(type));
-            }
-        });
-        
-        // Geometric construct buttons
-        ['fractal', 'mandala', 'spiral', 'matrix', 'hexagon', 'crystal', 'circuit', 'flower', 'galaxy'].forEach(type => {
-            const btn = document.getElementById(`construct${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
-            if (btn) {
-                btn.addEventListener('click', () => this.drawGeometricConstruct(type));
-            }
-        });
-        
-        // Background generator buttons
-        ['cybermesh', 'neuralnet', 'datamatrix', 'circuitboard', 'hexgrid', 'starfield'].forEach(type => {
-            const btn = document.getElementById(`bg${type.charAt(0).toUpperCase() + type.slice(1)}Btn`);
-            if (btn) {
-                btn.addEventListener('click', () => this.generateBackground(type));
-            }
-        });
     }
 
     setupKeyboardShortcuts() {
@@ -509,6 +601,8 @@ class PixelCollageBuilder {
                 this.sprayPixels(pos.x, pos.y);
                 break;
         }
+        
+        this.updatePixelCount();
     }
 
     stopDrawing() {
@@ -623,12 +717,37 @@ class PixelCollageBuilder {
 
     setTool(tool) {
         this.currentTool = tool;
+        
+        // Update UI - remove active class from all tool buttons
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to the selected tool
+        const toolBtn = document.getElementById(tool + 'Tool');
+        if (toolBtn) {
+            toolBtn.classList.add('active');
+        }
+        
         this.updateToolIndicator();
+        this.updateModeIndicator(`${tool.toUpperCase()} MODE`);
     }
 
-    setBrushSize(size) {
+    setBrushSize(size, element) {
         this.currentBrushSize = size;
+        
+        // Update UI - remove active class from all size buttons
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to clicked button
+        if (element) {
+            element.classList.add('active');
+        }
+        
         this.updateToolIndicator();
+        this.updateModeIndicator(`Brush size: ${size}`);
     }
 
     setPixelType(type) {
@@ -637,12 +756,66 @@ class PixelCollageBuilder {
     }
 
     updateToolIndicator() {
-        document.getElementById('toolIndicator').textContent = 
-            `${this.currentTool.toUpperCase()} | ${this.currentPixelType.toUpperCase()} | Size: ${this.currentBrushSize}`;
+        const indicator = document.getElementById('toolIndicator');
+        if (indicator) {
+            indicator.textContent = `${this.currentTool.toUpperCase()} | ${this.currentPixelType.toUpperCase()} | Size: ${this.currentBrushSize}`;
+        } else {
+            console.warn('⚠️ toolIndicator element not found');
+        }
+    }
+
+    updateCoordinates(e) {
+        const pos = this.getMousePos(e);
+        const coordsElement = document.getElementById('coords');
+        if (coordsElement) {
+            coordsElement.textContent = `${pos.x}, ${pos.y}`;
+        }
+    }
+
+    updatePixelCount() {
+        let count = 0;
+        for (let y = 0; y < this.gridHeight; y++) {
+            for (let x = 0; x < this.gridWidth; x++) {
+                if (this.pixels[y][x] !== null) count++;
+            }
+        }
+        
+        const pixelCountElement = document.getElementById('pixelCount');
+        if (pixelCountElement) {
+            pixelCountElement.textContent = count;
+        }
+    }
+
+    startFpsCounter() {
+        let frameCount = 0;
+        let lastTime = performance.now();
+        
+        const updateFps = () => {
+            frameCount++;
+            const now = performance.now();
+            
+            if (now - lastTime >= 1000) {
+                const fpsElement = document.getElementById('fps');
+                if (fpsElement) {
+                    fpsElement.textContent = frameCount;
+                }
+                frameCount = 0;
+                lastTime = now;
+            }
+            
+            requestAnimationFrame(updateFps);
+        };
+        
+        updateFps();
     }
 
     updateModeIndicator(message) {
-        document.getElementById('modeIndicator').textContent = message;
+        const indicator = document.getElementById('modeIndicator');
+        if (indicator) {
+            indicator.textContent = message;
+        } else {
+            console.warn('⚠️ modeIndicator element not found');
+        }
     }
 
     cycleRetrowavePalette() {
@@ -884,6 +1057,7 @@ class PixelCollageBuilder {
         this.initializePixels();
         this.history.saveState();
         this.updateModeIndicator('Canvas cleared!');
+        this.updatePixelCount();
     }
 
     // Geometric construct generation
@@ -1712,7 +1886,34 @@ function checkMobileAndRedirect() {
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOM Content Loaded - Starting Pixel Forge Matrix...');
+    
+    // Check if we should redirect to mobile
     if (!checkMobileAndRedirect()) {
-        new PixelCollageBuilder();
+        try {
+            console.log('💻 Initializing desktop version...');
+            const app = new PixelCollageBuilder();
+            console.log('✅ Pixel Forge Matrix initialized successfully!');
+            
+            // Make app globally accessible for debugging
+            window.pixelForge = app;
+        } catch (error) {
+            console.error('❌ Failed to initialize Pixel Forge Matrix:', error);
+            console.error('Stack trace:', error.stack);
+            
+            // Show user-friendly error
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: #ff006e; color: white; padding: 20px; border-radius: 10px;
+                font-family: 'Orbitron', monospace; text-align: center; z-index: 10000;
+            `;
+            errorDiv.innerHTML = `
+                <h3>⚠️ Initialization Error</h3>
+                <p>Please check browser console (F12) for details</p>
+                <button onclick="location.reload()" style="background: white; color: #ff006e; border: none; padding: 10px; margin-top: 10px; border-radius: 5px; cursor: pointer;">Reload Page</button>
+            `;
+            document.body.appendChild(errorDiv);
+        }
     }
 });
