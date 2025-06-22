@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🚀 Pixel Forge Mobile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <!-- GIF Library with robust loading -->
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js"></script>
+    <script>
+        // Enhanced GIF library setup for mobile
+        window.gifWorkerReady = false;
+        window.gifLibraryStatus = 'loading';
+        
+        function initializeGifLibrary() {
+            if (typeof GIF === 'undefined') {
+                console.warn('GIF library not loaded');
+                window.gifLibraryStatus = 'failed';
+                return;
+            }
+            
+            // Try to fetch worker with timeout and fallback
+            const fetchWorker = () => {
+                return fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js', {
+                    timeout: 10000
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Worker fetch failed');
+                    return response.blob();
+                })
+                .then(blob => {
+                    const workerUrl = URL.createObjectURL(blob);
+                    const originalGIF = window.GIF;
+                    
+                    window.GIF = function(options) {
+                        options = options || {};
+                        options.workerScript = workerUrl;
+                        return new originalGIF(options);
+                    };
+                    
+                    Object.setPrototypeOf(window.GIF, originalGIF);
+                    Object.assign(window.GIF, originalGIF);
+                    
+                    window.gifWorkerReady = true;
+                    window.gifLibraryStatus = 'ready';
+                    console.log('✅ GIF library ready for mobile');
+                    
+                    // Update button state if it exists
+                    const recordBtn = document.getElementById('recordBtn');
+                    if (recordBtn && recordBtn.innerHTML.includes('LOADING')) {
+                        recordBtn.innerHTML = '🎬<br>RECORD GIF';
+                        recordBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.warn('GIF worker setup failed:', error);
+                    window.gifWorkerReady = false;
+                    window.gifLibraryStatus = 'failed';
+                    
+                    // Update button to show error
+                    const recordBtn = document.getElementById('recordBtn');
+                    if (recordBtn) {
+                        recordBtn.innerHTML = '🔄<br>RETRY GIF';
+                        recordBtn.disabled = false; // Allow retry
+                    }
+                });
+            };
+            
+            // Try to initialize, with retry
+            fetchWorker().catch(() => {
+                console.log('Retrying GIF worker setup...');
+                setTimeout(() => fetchWorker(), 2000);
+            });
+        }
+        
+        // Make function globally available for retries
+        window.initializeGifLibrary = initializeGifLibrary;
+        
+        // Initialize when DOM loads or immediately if already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeGifLibrary);
+        } else {
+            initializeGifLibrary();
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        html {
+            background: #000000;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Orbitron', monospace;
+            background: #000000;
+            color: #00ff41;
+            overflow: hidden;
+            height: 100vh;
+            position: fixed;
+            width: 100%;
+            padding: 10px;
+        }
+
+        .mobile-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 100vw;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background: #000000;
+        }
+
+        .header {
+            text-align: center;
+            padding: 10px;
+            background: transparent;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            color: #00ff41;
+            text-shadow: 0 0 10px #00ff41;
+            margin-bottom: 5px;
+            animation: glow 2s infinite alternate;
+        }
+
+        .header .subtitle {
+            font-size: 10px;
+            color: #ff006e;
+            opacity: 0.8;
+        }
+
+        @keyframes glow {
+            0% { text-shadow: 0 0 10px #00ff41; }
+            100% { text-shadow: 0 0 20px #00ff41, 0 0 30px #00ff41; }
+        }
+
+        .canvas-container {
+            position: relative;
+            width: min(90vw, 90vh);
+            height: min(90vw, 90vh);
+            border: 3px solid #00ff41;
+            border-radius: 15px;
+            background: #000000;
+            box-shadow: 
+                0 0 20px #00ff41,
+                inset 0 0 20px rgba(0, 255, 65, 0.1);
+            overflow: hidden;
+        }
+
+        #mobileCanvas {
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            cursor: crosshair;
+            image-rendering: pixelated;
+            display: block;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 0 10px;
+            background: transparent;
+        }
+
+        .control-btn {
+            flex: 1;
+            min-width: 100px;
+            max-width: 150px;
+            height: 60px;
+            border: 3px solid #00ff41;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+            color: #00ff41;
+            font-family: 'Orbitron', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            touch-action: manipulation;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 65, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .control-btn:active::before {
+            left: 100%;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            box-shadow: 
+                0 0 30px #00ff41,
+                inset 0 0 20px rgba(0, 255, 65, 0.3);
+        }
+
+        #randomBtn {
+            background: linear-gradient(135deg, #ff006e, #ff4081);
+            border-color: #ff006e;
+            color: #ffffff;
+            animation: randomPulse 3s infinite;
+        }
+
+        @keyframes randomPulse {
+            0%, 100% { box-shadow: 0 0 15px #ff006e; }
+            50% { box-shadow: 0 0 25px #ff006e, 0 0 35px #ff006e; }
+        }
+
+        #colorCycleBtn {
+            background: linear-gradient(135deg, #8000ff, #9c27b0);
+            border-color: #8000ff;
+            color: #ffffff;
+        }
+
+        #colorCycleBtn.active {
+            background: linear-gradient(135deg, #ff006e, #00f5ff, #00ff41);
+            animation: colorCyclePulse 1s infinite;
+        }
+
+        @keyframes colorCyclePulse {
+            0% { box-shadow: 0 0 20px #ff006e; }
+            25% { box-shadow: 0 0 20px #00f5ff; }
+            50% { box-shadow: 0 0 20px #00ff41; }
+            75% { box-shadow: 0 0 20px #ffff00; }
+            100% { box-shadow: 0 0 20px #ff006e; }
+        }
+
+        #recordBtn {
+            background: linear-gradient(135deg, #00f5ff, #03dac6);
+            border-color: #00f5ff;
+            color: #000000;
+        }
+
+        #recordBtn.recording {
+            background: linear-gradient(135deg, #ff0000, #ff4444);
+            color: #ffffff;
+            animation: recordingPulse 0.5s infinite alternate;
+        }
+
+        @keyframes recordingPulse {
+            0% { box-shadow: 0 0 20px #ff0000; }
+            100% { box-shadow: 0 0 40px #ff0000, 0 0 60px #ff0000; }
+        }
+
+        .status {
+            text-align: center;
+            font-size: 12px;
+            color: #00ff41;
+            min-height: 20px;
+            padding: 5px;
+            background: transparent;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 255, 255, 0.95);
+            color: #000000;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 10000;
+            animation: toastSlide 0.3s ease-out;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        @keyframes toastSlide {
+            from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a) !important;
+            color: #666 !important;
+            border-color: #444 !important;
+            animation: none !important;
+            box-shadow: none !important;
+        }
+
+        .control-btn:disabled::before {
+            display: none;
+        }
+
+        /* Touch feedback */
+        .control-btn:hover {
+            box-shadow: 0 0 25px currentColor;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 16px;
+            }
+            
+            .control-btn {
+                font-size: 12px;
+                height: 50px;
+                min-width: 80px;
+            }
+            
+            .controls {
+                gap: 10px;
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 600px) {
+            .mobile-container {
+                flex-direction: row;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .canvas-container {
+                width: min(60vw, 80vh);
+                height: min(60vw, 80vh);
+            }
+            
+            .controls {
+                flex-direction: column;
+                width: auto;
+                gap: 10px;
+            }
+            
+            .control-btn {
+                max-width: 120px;
+                height: 50px;
+            }
+        }
+
+        /* Ensure no white backgrounds anywhere */
+        ::selection {
+            background: rgba(0, 255, 65, 0.3);
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-container">
+        <div class="header">
+            <h1>◈ PIXEL FORGE ◈</h1>
+            <div class="subtitle">Touch & Create Cyberpunk Art</div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="mobileCanvas" width="400" height="400"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" id="randomBtn">
+                🎲<br>RANDOMIZE
+            </button>
+            <button class="control-btn" id="colorCycleBtn">
+                🌈<br>COLOR CYCLE
+            </button>
+            <button class="control-btn" id="recordBtn">
+                🎬<br>RECORD GIF
+            </button>
+        </div>
+        
+        <div class="status" id="status">Touch canvas to paint • Tap buttons for magic</div>
+    </div>
+
+    <script>
+        class MobilePixelForge {
+            constructor() {
+                this.canvas = document.getElementById('mobileCanvas');
+                this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+                
+                // Mobile-optimized settings
+                this.gridSize = 8; // Larger pixels for mobile
+                this.gridWidth = this.canvas.width / this.gridSize;
+                this.gridHeight = this.canvas.height / this.gridSize;
+                
+                this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
+                
+                this.isDrawing = false;
+                this.colorCycling = false;
+                this.cycleTime = 0;
+                this.currentColor = '#00ff41';
+                
+                // GIF Recording
+                this.recording = false;
+                this.gif = null;
+                this.recordingFrames = 0;
+                this.maxRecordingFrames = 60; // 2 seconds at 30fps for mobile
+                
+                // Quantum pixel types optimized for mobile
+                this.pixelTypes = ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex'];
+                this.colors = [
+                    '#00ff41', '#ff006e', '#00f5ff', '#ffff00', 
+                    '#ff4081', '#9c27b0', '#ff9800', '#4caf50'
+                ];
+                
+                // Retrowave cycling colors
+                this.cycleColors = [
+                    '#ff006e', '#ff0080', '#ff00ff', '#8000ff', 
+                    '#0080ff', '#00f5ff', '#00ffff', '#00ff80',
+                    '#00ff00', '#80ff00', '#ffff00', '#ff8000'
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupCanvas();
+                this.setupEventListeners();
+                this.startAnimationLoop();
+                this.showStatus('Ready to create! 🚀');
+                
+                // Check GIF library status and update button
+                this.updateGifButtonStatus();
+                
+                // Monitor GIF library loading
+                const checkGifStatus = () => {
+                    if (window.gifLibraryStatus === 'ready') {
+                        this.updateGifButtonStatus();
+                    } else if (window.gifLibraryStatus === 'failed') {
+                        this.updateGifButtonStatus();
+                    } else {
+                        setTimeout(checkGifStatus, 1000);
+                    }
+                };
+                checkGifStatus();
+            }
+            
+            updateGifButtonStatus() {
+                const recordBtn = document.getElementById('recordBtn');
+                if (!recordBtn) return;
+                
+                if (window.gifLibraryStatus === 'loading') {
+                    recordBtn.innerHTML = '⏳<br>LOADING...';
+                    recordBtn.disabled = true;
+                } else if (window.gifLibraryStatus === 'ready') {
+                    recordBtn.innerHTML = '🎬<br>RECORD GIF';
+                    recordBtn.disabled = false;
+                } else if (window.gifLibraryStatus === 'failed') {
+                    recordBtn.innerHTML = '🔄<br>RETRY GIF';
+                    recordBtn.disabled = false; // Allow retry
+                }
+            }
+            
+            setupCanvas() {
+                this.canvas.style.imageRendering = 'pixelated';
+                this.ctx.imageSmoothingEnabled = false;
+                
+                // Fill with black background
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+            
+            setupEventListeners() {
+                // Touch events for canvas
+                this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+                this.canvas.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+                this.canvas.addEventListener('touchend', () => this.handleTouchEnd());
+                
+                // Mouse events for desktop testing
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseStart(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', () => this.handleTouchEnd());
+                
+                // Button events
+                document.getElementById('randomBtn').addEventListener('click', () => this.randomize());
+                document.getElementById('colorCycleBtn').addEventListener('click', () => this.toggleColorCycle());
+                document.getElementById('recordBtn').addEventListener('click', (e) => {
+                    // If GIF library failed, allow retry
+                    if (window.gifLibraryStatus === 'failed') {
+                        this.retryGifLibrary();
+                    } else {
+                        this.toggleRecording();
+                    }
+                });
+                
+                // Prevent default touch behaviors
+                document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+            }
+            
+            handleTouchStart(e) {
+                e.preventDefault();
+                this.isDrawing = true;
+                const touch = e.touches[0];
+                this.draw(touch.clientX, touch.clientY);
+            }
+            
+            handleTouchMove(e) {
+                e.preventDefault();
+                if (!this.isDrawing) return;
+                const touch = e.touches[0];
+                this.draw(touch.clientX, touch.clientY);
+            }
+            
+            handleMouseStart(e) {
+                this.isDrawing = true;
+                this.draw(e.clientX, e.clientY);
+            }
+            
+            handleMouseMove(e) {
+                if (!this.isDrawing) return;
+                this.draw(e.clientX, e.clientY);
+            }
+            
+            handleTouchEnd() {
+                this.isDrawing = false;
+            }
+            
+            draw(clientX, clientY) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = Math.floor((clientX - rect.left) / this.gridSize);
+                const y = Math.floor((clientY - rect.top) / this.gridSize);
+                
+                if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                    // Paint a 2x2 area for easier mobile touch
+                    for (let dx = 0; dx < 2; dx++) {
+                        for (let dy = 0; dy < 2; dy++) {
+                            const px = Math.min(x + dx, this.gridWidth - 1);
+                            const py = Math.min(y + dy, this.gridHeight - 1);
+                            
+                            this.setPixel(px, py, {
+                                color: this.currentColor,
+                                type: this.getRandomPixelType()
+                            });
+                        }
+                    }
+                }
+            }
+            
+            setPixel(x, y, pixel) {
+                this.pixels[x][y] = pixel;
+                this.drawPixel(x, y);
+            }
+            
+            drawPixel(x, y) {
+                const pixel = this.pixels[x][y];
+                if (!pixel) return;
+                
+                const centerX = x * this.gridSize + this.gridSize / 2;
+                const centerY = y * this.gridSize + this.gridSize / 2;
+                const time = Date.now() * 0.01;
+                
+                this.ctx.fillStyle = pixel.color;
+                
+                switch (pixel.type) {
+                    case 'quantum':
+                        // Quantum probability cloud
+                        for (let i = 0; i < 8; i++) {
+                            const qx = centerX + (Math.random() - 0.5) * this.gridSize;
+                            const qy = centerY + (Math.random() - 0.5) * this.gridSize;
+                            const alpha = Math.floor(Math.random() * 180 + 75).toString(16);
+                            this.ctx.fillStyle = pixel.color + alpha;
+                            this.ctx.fillRect(qx, qy, 2, 2);
+                        }
+                        break;
+                        
+                    case 'chaos':
+                        // Chaotic explosion
+                        for (let i = 0; i < 10; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const radius = Math.random() * this.gridSize / 2;
+                            const qx = centerX + Math.cos(angle + time) * radius;
+                            const qy = centerY + Math.sin(angle + time) * radius;
+                            this.ctx.fillStyle = pixel.color + 'aa';
+                            this.ctx.fillRect(qx, qy, 2, 2);
+                        }
+                        break;
+                        
+                    case 'strobe':
+                        // Strobing effect
+                        const strobe = Math.floor(time * 6) % 2;
+                        if (strobe) {
+                            this.ctx.fillStyle = '#ffffff';
+                            this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+                        } else {
+                            this.ctx.fillStyle = pixel.color;
+                            this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+                        }
+                        break;
+                        
+                    case 'nova':
+                        // Nova burst
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2;
+                            const radius = (Math.sin(time + x + y) * 0.5 + 0.5) * this.gridSize;
+                            const nx = centerX + Math.cos(angle) * radius;
+                            const ny = centerY + Math.sin(angle) * radius;
+                            this.ctx.fillStyle = pixel.color + '80';
+                            this.ctx.fillRect(nx - 1, ny - 1, 3, 3);
+                        }
+                        break;
+                        
+                    case 'spectrum':
+                        // Spectrum cycling
+                        const spectrumColors = ['#ff0000', '#ff8000', '#ffff00', '#00ff00', '#0080ff', '#8000ff'];
+                        for (let i = 0; i < 6; i++) {
+                            const colorIndex = (Math.floor(time + i) + x + y) % spectrumColors.length;
+                            const sx = centerX + (Math.random() - 0.5) * this.gridSize;
+                            const sy = centerY + (Math.random() - 0.5) * this.gridSize;
+                            this.ctx.fillStyle = spectrumColors[colorIndex] + 'c0';
+                            this.ctx.fillRect(sx, sy, 2, 2);
+                        }
+                        break;
+                        
+                    case 'vortex':
+                        // Spiral vortex
+                        for (let i = 0; i < 8; i++) {
+                            const spiral = time + i * 0.5;
+                            const radius = (i / 8) * this.gridSize / 2;
+                            const vx = centerX + Math.cos(spiral) * radius;
+                            const vy = centerY + Math.sin(spiral) * radius;
+                            this.ctx.fillStyle = pixel.color + 'aa';
+                            this.ctx.fillRect(vx - 1, vy - 1, 2, 2);
+                        }
+                        break;
+                        
+                    default:
+                        this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+                }
+            }
+            
+            startAnimationLoop() {
+                const animate = () => {
+                    this.cycleTime += 0.05;
+                    
+                    // Redraw animated pixels
+                    for (let x = 0; x < this.gridWidth; x++) {
+                        for (let y = 0; y < this.gridHeight; y++) {
+                            const pixel = this.pixels[x][y];
+                            if (pixel) {
+                                // Apply color cycling
+                                if (this.colorCycling) {
+                                    this.applyColorCycling(x, y, pixel);
+                                }
+                                
+                                // Redraw animated types
+                                if (this.isAnimatedType(pixel.type)) {
+                                    this.clearPixel(x, y);
+                                    this.drawPixel(x, y);
+                                }
+                            }
+                        }
+                    }
+                    
+                    // GIF recording
+                    if (this.recording) {
+                        this.captureGifFrame();
+                    }
+                    
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }
+            
+            applyColorCycling(x, y, pixel) {
+                const baseIndex = Math.floor(this.cycleTime + x * 0.1 + y * 0.1) % this.cycleColors.length;
+                const cycledColor = this.cycleColors[(baseIndex + Math.floor(this.cycleTime * 3)) % this.cycleColors.length];
+                
+                if (pixel.color !== cycledColor) {
+                    pixel.color = cycledColor;
+                }
+            }
+            
+            isAnimatedType(type) {
+                return ['quantum', 'chaos', 'strobe', 'nova', 'spectrum', 'vortex'].includes(type);
+            }
+            
+            clearPixel(x, y) {
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+            }
+            
+            getRandomPixelType() {
+                return this.pixelTypes[Math.floor(Math.random() * this.pixelTypes.length)];
+            }
+            
+            getRandomColor() {
+                return this.colors[Math.floor(Math.random() * this.colors.length)];
+            }
+            
+            randomize() {
+                // Clear canvas with black
+                this.ctx.fillStyle = '#000000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
+                
+                // Generate random art
+                for (let i = 0; i < 200; i++) {
+                    const x = Math.floor(Math.random() * this.gridWidth);
+                    const y = Math.floor(Math.random() * this.gridHeight);
+                    
+                    this.setPixel(x, y, {
+                        color: this.getRandomColor(),
+                        type: this.getRandomPixelType()
+                    });
+                }
+                
+                // Add some geometric patterns
+                const centerX = Math.floor(this.gridWidth / 2);
+                const centerY = Math.floor(this.gridHeight / 2);
+                
+                // Central burst
+                for (let radius = 1; radius <= 6; radius++) {
+                    for (let angle = 0; angle < 360; angle += 45) {
+                        const rad = angle * Math.PI / 180;
+                        const x = centerX + Math.cos(rad) * radius;
+                        const y = centerY + Math.sin(rad) * radius;
+                        
+                        if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
+                            this.setPixel(Math.floor(x), Math.floor(y), {
+                                color: '#ffffff',
+                                type: 'nova'
+                            });
+                        }
+                    }
+                }
+                
+                this.showStatus('🚀 Epic art generated!');
+                this.showToast('🎨 Random masterpiece created!');
+            }
+            
+            toggleColorCycle() {
+                this.colorCycling = !this.colorCycling;
+                const btn = document.getElementById('colorCycleBtn');
+                
+                if (this.colorCycling) {
+                    btn.classList.add('active');
+                    this.showStatus('🌈 Color cycling ACTIVE - Canvas is alive!');
+                    this.showToast('🌈 Color cycling ON');
+                } else {
+                    btn.classList.remove('active');
+                    this.showStatus('Color cycling disabled');
+                    this.showToast('⏹️ Color cycling OFF');
+                }
+            }
+            
+            retryGifLibrary() {
+                this.showToast('🔄 Retrying GIF library...');
+                this.showStatus('Retrying GIF library setup...');
+                
+                const recordBtn = document.getElementById('recordBtn');
+                recordBtn.innerHTML = '⏳<br>LOADING...';
+                recordBtn.disabled = true;
+                
+                // Reset status and retry
+                window.gifLibraryStatus = 'loading';
+                window.gifWorkerReady = false;
+                
+                // Retry initialization
+                if (window.initializeGifLibrary) {
+                    window.initializeGifLibrary();
+                } else {
+                    // Fallback manual retry
+                    setTimeout(() => {
+                        this.updateGifButtonStatus();
+                    }, 3000);
+                }
+            }
+            
+            toggleRecording() {
+                if (this.recording) {
+                    this.stopRecording();
+                } else {
+                    this.startRecording();
+                }
+            }
+            
+            startRecording() {
+                // Check if GIF library is ready
+                if (window.gifLibraryStatus !== 'ready') {
+                    if (window.gifLibraryStatus === 'loading') {
+                        this.showToast('⏳ GIF library still loading, please wait...');
+                        this.showStatus('Please wait for GIF library to load');
+                    } else {
+                        this.showToast('❌ GIF library failed to load. Try refreshing.');
+                        this.showStatus('GIF recording unavailable - refresh page');
+                    }
+                    return;
+                }
+                
+                if (typeof GIF === 'undefined' || !window.gifWorkerReady) {
+                    this.showToast('❌ GIF library not ready, please refresh');
+                    this.showStatus('GIF library error - please refresh page');
+                    return;
+                }
+                
+                try {
+                    this.recording = true;
+                    this.recordingFrames = 0;
+                    
+                    this.gif = new GIF({
+                        workers: 1, // Reduced for mobile
+                        quality: 15, // Balanced quality for mobile
+                        width: this.canvas.width,
+                        height: this.canvas.height
+                    });
+                    
+                    const btn = document.getElementById('recordBtn');
+                    btn.classList.add('recording');
+                    btn.innerHTML = '⏹<br>STOP REC';
+                    btn.disabled = false;
+                    
+                    this.showStatus('🔴 Recording GIF...');
+                    this.showToast('🎬 Recording started!');
+                    
+                } catch (error) {
+                    console.error('Error starting GIF recording:', error);
+                    this.showToast('❌ Failed to start recording');
+                    this.showStatus('Recording failed - try again');
+                    this.recording = false;
+                }
+            }
+            
+            stopRecording() {
+                this.recording = false;
+                
+                const btn = document.getElementById('recordBtn');
+                btn.classList.remove('recording');
+                btn.innerHTML = '⚙<br>SAVING...';
+                
+                this.showStatus('⚙️ Processing GIF...');
+                
+                this.gif.on('finished', (blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = `pixel-forge-mobile-${Date.now()}.gif`;
+                    link.href = url;
+                    link.click();
+                    
+                    btn.innerHTML = '🎬<br>RECORD GIF';
+                    this.showStatus('✅ GIF saved to downloads!');
+                    this.showToast('🎉 GIF exported!');
+                    
+                    URL.revokeObjectURL(url);
+                });
+                
+                this.gif.render();
+            }
+            
+            captureGifFrame() {
+                if (this.recordingFrames >= this.maxRecordingFrames) {
+                    this.stopRecording();
+                    return;
+                }
+                
+                // Capture every 3rd frame for mobile performance
+                if (this.recordingFrames % 3 === 0) {
+                    this.gif.addFrame(this.canvas, {
+                        delay: 100, // 10 fps
+                        copy: true
+                    });
+                }
+                
+                this.recordingFrames++;
+                
+                const progress = Math.floor((this.recordingFrames / this.maxRecordingFrames) * 100);
+                this.showStatus(`🔴 Recording ${progress}%`);
+            }
+            
+            showStatus(message) {
+                document.getElementById('status').textContent = message;
+            }
+            
+            showToast(message) {
+                const existingToast = document.querySelector('.toast');
+                if (existingToast) {
+                    existingToast.remove();
+                }
+                
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.remove();
+                    }
+                }, 2000);
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            new MobilePixelForge();
+        });
+    </script>
+</body>
+</html>
