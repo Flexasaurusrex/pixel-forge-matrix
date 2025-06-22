@@ -111,6 +111,10 @@ class PixelCollageBuilder {
         this.colorCycling = false;
         this.cycleTime = 0;
         
+        // 🌌✨ NEW: Animation effects for magical and cosmic elements
+        this.activeEffects = [];
+        this.animationTime = 0;
+        
         // GIF Recording
         this.recording = false;
         this.gif = null;
@@ -279,6 +283,10 @@ class PixelCollageBuilder {
     startAnimationLoop() {
         const animate = () => {
             this.cycleTime += 0.05;
+            this.animationTime += 0.016; // 🌌✨ NEW: Global animation time
+            
+            // 🌌✨ NEW: Update magical and cosmic effects
+            this.updateMagicalCosmicEffects();
             
             // Redraw time-based pixel effects
             for (let x = 0; x < this.gridWidth; x++) {
@@ -307,6 +315,423 @@ class PixelCollageBuilder {
             requestAnimationFrame(animate);
         };
         animate();
+    }
+    
+    // 🌌✨ NEW: Update magical and cosmic effects
+    updateMagicalCosmicEffects() {
+        this.activeEffects.forEach((effect, index) => {
+            // Update effect based on type
+            if (effect.type === 'portal') {
+                this.renderPortalEffect(effect);
+            } else if (effect.type === 'shield') {
+                this.renderEnergyShieldEffect(effect);
+            } else if (effect.type === 'spellcircle') {
+                this.renderSpellCircleEffect(effect);
+            } else if (effect.type === 'crystal') {
+                this.renderCrystalGrowthEffect(effect);
+            } else if (effect.type === 'starfield') {
+                this.renderStarfieldEffect(effect);
+            } else if (effect.type === 'nebula') {
+                this.renderNebulaEffect(effect);
+            } else if (effect.type === 'solarflare') {
+                this.renderSolarFlareEffect(effect);
+            } else if (effect.type === 'blackhole') {
+                this.renderBlackHoleEffect(effect);
+            }
+            
+            // Remove expired effects
+            effect.life -= 0.016;
+            if (effect.life <= 0) {
+                this.activeEffects.splice(index, 1);
+            }
+        });
+    }
+    
+    // 🔮 MAGICAL EFFECTS - Portal Rings
+    renderPortalEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        
+        // Multiple rotating rings
+        for (let ring = 0; ring < 3; ring++) {
+            const radius = 6 + ring * 3;
+            const speed = 1 + ring * 0.5;
+            const particles = 8 + ring * 2;
+            
+            for (let i = 0; i < particles; i++) {
+                const angle = (i / particles) * Math.PI * 2 + this.animationTime * speed;
+                const x = Math.floor(centerX + Math.cos(angle) * radius);
+                const y = Math.floor(centerY + Math.sin(angle) * radius);
+                
+                // Portal colors - purple to cyan gradient
+                const hue = 270 + Math.sin(this.animationTime + ring) * 60;
+                const color = `hsl(${hue}, 80%, 60%)`;
+                
+                this.setPixel(x, y, { color: color, type: 'portal_particle' });
+            }
+        }
+        
+        // Central portal energy
+        const pulseSize = 1 + Math.sin(this.animationTime * 4) * 1;
+        for (let px = -pulseSize; px <= pulseSize; px++) {
+            for (let py = -pulseSize; py <= pulseSize; py++) {
+                if (px * px + py * py <= pulseSize * pulseSize) {
+                    const x = Math.floor(centerX + px);
+                    const y = Math.floor(centerY + py);
+                    this.setPixel(x, y, { color: '#ff00ff', type: 'portal_core' });
+                }
+            }
+        }
+    }
+    
+    // 🛡️ MAGICAL EFFECTS - Energy Shields
+    renderEnergyShieldEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        const baseRadius = 8;
+        
+        // Hexagonal shield pattern
+        for (let layer = 0; layer < 2; layer++) {
+            const radius = baseRadius + layer * 3;
+            const sides = 6;
+            const rotation = this.animationTime * (0.5 + layer * 0.2);
+            
+            for (let side = 0; side < sides; side++) {
+                const startAngle = (side / sides) * Math.PI * 2 + rotation;
+                const endAngle = ((side + 1) / sides) * Math.PI * 2 + rotation;
+                
+                // Draw hexagon side
+                const segments = 4;
+                for (let seg = 0; seg <= segments; seg++) {
+                    const t = seg / segments;
+                    const angle = startAngle + (endAngle - startAngle) * t;
+                    const x = Math.floor(centerX + Math.cos(angle) * radius);
+                    const y = Math.floor(centerY + Math.sin(angle) * radius);
+                    
+                    const intensity = 0.7 + Math.sin(this.animationTime * 3 + side + layer) * 0.3;
+                    const hue = 180 + Math.sin(this.animationTime + layer) * 30;
+                    const color = `hsl(${hue}, 100%, ${30 + intensity * 50}%)`;
+                    
+                    this.setPixel(x, y, { color: color, type: 'shield_energy' });
+                }
+            }
+        }
+    }
+    
+    // ✨ MAGICAL EFFECTS - Spell Circles
+    renderSpellCircleEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        
+        // Main spell circle
+        const mainRadius = 10;
+        const symbols = 6;
+        const rotation = this.animationTime * 0.8;
+        
+        // Outer circle with symbols
+        for (let i = 0; i < symbols; i++) {
+            const angle = (i / symbols) * Math.PI * 2 + rotation;
+            const symbolX = Math.floor(centerX + Math.cos(angle) * mainRadius);
+            const symbolY = Math.floor(centerY + Math.sin(angle) * mainRadius);
+            
+            const symbolIntensity = 0.8 + Math.sin(this.animationTime * 2 + i) * 0.2;
+            const hue = 45 + i * 60; // Different colors for each symbol
+            const color = `hsl(${hue}, 100%, ${50 + symbolIntensity * 50}%)`;
+            
+            this.setPixel(symbolX, symbolY, { color: color, type: 'spell_symbol' });
+        }
+        
+        // Inner rotating circles
+        for (let ring = 0; ring < 2; ring++) {
+            const ringRadius = 3 + ring * 3;
+            const ringSpeed = 1.5 - ring * 0.5;
+            const ringParticles = 6 + ring * 2;
+            
+            for (let p = 0; p < ringParticles; p++) {
+                const pAngle = (p / ringParticles) * Math.PI * 2 + this.animationTime * ringSpeed;
+                const px = Math.floor(centerX + Math.cos(pAngle) * ringRadius);
+                const py = Math.floor(centerY + Math.sin(pAngle) * ringRadius);
+                
+                const hue = 60 + ring * 120 + Math.sin(this.animationTime + p) * 60;
+                const color = `hsl(${hue}, 100%, 70%)`;
+                this.setPixel(px, py, { color: color, type: 'spell_energy' });
+            }
+        }
+        
+        // Central magical core
+        const coreColor = `hsl(${(this.animationTime * 100) % 360}, 100%, 90%)`;
+        this.setPixel(centerX, centerY, { color: coreColor, type: 'spell_core' });
+    }
+    
+    // 💎 MAGICAL EFFECTS - Crystal Growth
+    renderCrystalGrowthEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        const growthRadius = Math.min(12, (4 - effect.life) * 6); // Grows over time
+        
+        // Crystal structure - simplified hexagonal lattice
+        const crystalSpacing = 2;
+        const layers = Math.floor(growthRadius / crystalSpacing);
+        
+        for (let layer = 0; layer <= layers; layer++) {
+            const hexRadius = layer * crystalSpacing;
+            if (hexRadius === 0) {
+                // Center crystal
+                this.setPixel(centerX, centerY, { color: '#00ffff', type: 'crystal_core' });
+                continue;
+            }
+            
+            // Hexagonal ring - simplified
+            const points = Math.max(6, layer * 6);
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * Math.PI * 2;
+                const x = Math.floor(centerX + Math.cos(angle) * hexRadius);
+                const y = Math.floor(centerY + Math.sin(angle) * hexRadius);
+                
+                // Crystal facet colors
+                const facetVariation = Math.sin(angle + this.animationTime) * 30;
+                const hue = 180 + facetVariation; // Cyan to blue-green range
+                const color = `hsl(${hue}, 80%, 60%)`;
+                
+                this.setPixel(x, y, { color: color, type: 'crystal_shard' });
+            }
+        }
+    }
+    
+    // ✨ COSMIC EFFECTS - Starfield
+    renderStarfieldEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        const fieldRadius = 15;
+        
+        // Create twinkling stars
+        const starCount = 12;
+        
+        for (let i = 0; i < starCount; i++) {
+            // Pseudo-random positions based on effect position
+            const starSeed = centerX + centerY + i * 137.5;
+            const starAngle = (starSeed % 360) * Math.PI / 180;
+            const starDistance = ((starSeed * 7) % fieldRadius);
+            
+            const starX = Math.floor(centerX + Math.cos(starAngle) * starDistance);
+            const starY = Math.floor(centerY + Math.sin(starAngle) * starDistance);
+            
+            // Twinkling effect
+            const twinkle = Math.sin(this.animationTime * 2 + i) * 0.5 + 0.5;
+            const brightness = 30 + twinkle * 70;
+            
+            // Different star types
+            const starType = i % 3;
+            let hue;
+            
+            switch (starType) {
+                case 0: hue = 60; break;   // Yellow
+                case 1: hue = 240; break;  // Blue
+                case 2: hue = 0; break;    // Red
+            }
+            
+            const color = `hsl(${hue}, 100%, ${brightness}%)`;
+            this.setPixel(starX, starY, { color: color, type: 'star' });
+        }
+    }
+    
+    // 🌌 COSMIC EFFECTS - Nebula Clouds
+    renderNebulaEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        
+        // Nebula cloud simulation - simplified
+        const cloudRadius = 12;
+        
+        for (let x = -cloudRadius; x <= cloudRadius; x += 2) {
+            for (let y = -cloudRadius; y <= cloudRadius; y += 2) {
+                const distance = Math.sqrt(x * x + y * y);
+                if (distance > cloudRadius) continue;
+                
+                // Simplified turbulence
+                const turbulence = Math.sin(x * 0.3 + this.animationTime * 0.5) * 
+                                 Math.cos(y * 0.3 + this.animationTime * 0.3);
+                
+                const cloudDensity = (1 - distance / cloudRadius) * 0.3 * (0.5 + turbulence * 0.5);
+                
+                if (cloudDensity > 0.1) {
+                    const pixelX = Math.floor(centerX + x);
+                    const pixelY = Math.floor(centerY + y);
+                    
+                    // Nebula colors - cosmic gas
+                    const angle = Math.atan2(y, x);
+                    const hue = 280 + Math.sin(angle + this.animationTime * 0.5) * 60;
+                    const color = `hsl(${hue}, 70%, ${20 + cloudDensity * 60}%)`;
+                    
+                    this.setPixel(pixelX, pixelY, { color: color, type: 'nebula_gas' });
+                }
+            }
+        }
+    }
+    
+    // 🔥 COSMIC EFFECTS - Solar Flares
+    renderSolarFlareEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        const flareIntensity = Math.sin(this.animationTime * 3) * 0.5 + 0.5;
+        
+        // Multiple flare arms
+        const flareCount = 4;
+        for (let flare = 0; flare < flareCount; flare++) {
+            const baseAngle = (flare / flareCount) * Math.PI * 2;
+            const flareAngle = baseAngle + Math.sin(this.animationTime * 2 + flare) * 0.5;
+            const flareLength = 8 + flareIntensity * 6;
+            
+            // Draw flare arm
+            for (let i = 0; i <= flareLength; i++) {
+                const x = Math.floor(centerX + Math.cos(flareAngle) * i);
+                const y = Math.floor(centerY + Math.sin(flareAngle) * i);
+                
+                const t = i / flareLength;
+                const intensity = (1 - t) * flareIntensity;
+                
+                if (intensity > 0.1) {
+                    let hue, lightness;
+                    
+                    if (intensity > 0.7) {
+                        hue = 60; // Yellow-white
+                        lightness = 80 + intensity * 20;
+                    } else if (intensity > 0.4) {
+                        hue = 30; // Orange
+                        lightness = 50 + intensity * 40;
+                    } else {
+                        hue = 0; // Red
+                        lightness = 30 + intensity * 50;
+                    }
+                    
+                    const color = `hsl(${hue}, 100%, ${lightness}%)`;
+                    this.setPixel(x, y, { color: color, type: 'solar_flare' });
+                }
+            }
+        }
+        
+        // Central solar core
+        const coreSize = 2 + flareIntensity * 2;
+        for (let cx = -coreSize; cx <= coreSize; cx++) {
+            for (let cy = -coreSize; cy <= coreSize; cy++) {
+                if (cx * cx + cy * cy <= coreSize * coreSize) {
+                    const x = Math.floor(centerX + cx);
+                    const y = Math.floor(centerY + cy);
+                    const coreColor = `hsl(60, 100%, 90%)`;
+                    this.setPixel(x, y, { color: coreColor, type: 'solar_core' });
+                }
+            }
+        }
+    }
+    
+    // 🕳️ COSMIC EFFECTS - Black Hole
+    renderBlackHoleEffect(effect) {
+        const centerX = effect.x;
+        const centerY = effect.y;
+        const eventHorizonRadius = 3;
+        const accretionDiskRadius = 10;
+        
+        // Accretion disk
+        for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
+            for (let radius = eventHorizonRadius; radius <= accretionDiskRadius; radius += 1) {
+                // Disk rotation - inner parts rotate faster
+                const rotationSpeed = 1 / (radius * 0.2);
+                const rotatedAngle = angle + this.animationTime * rotationSpeed;
+                
+                const x = Math.floor(centerX + Math.cos(rotatedAngle) * radius);
+                const y = Math.floor(centerY + Math.sin(rotatedAngle) * radius);
+                
+                const temperature = (accretionDiskRadius - radius) / accretionDiskRadius;
+                const heating = temperature * 0.8;
+                
+                // Accretion disk colors
+                let hue, lightness;
+                
+                if (heating > 0.6) {
+                    hue = 240; // Blue-white (hottest)
+                    lightness = 80;
+                } else if (heating > 0.3) {
+                    hue = 60; // Yellow
+                    lightness = 60;
+                } else {
+                    hue = 0; // Red (coolest)
+                    lightness = 40;
+                }
+                
+                const color = `hsl(${hue}, 100%, ${lightness}%)`;
+                this.setPixel(x, y, { color: color, type: 'accretion_disk' });
+            }
+        }
+        
+        // Event horizon - black center
+        for (let x = -eventHorizonRadius; x <= eventHorizonRadius; x++) {
+            for (let y = -eventHorizonRadius; y <= eventHorizonRadius; y++) {
+                if (x * x + y * y <= eventHorizonRadius * eventHorizonRadius) {
+                    const px = Math.floor(centerX + x);
+                    const py = Math.floor(centerY + y);
+                    this.setPixel(px, py, { color: '#000000', type: 'event_horizon' });
+                }
+            }
+        }
+    }
+    
+    // 🌌✨ NEW: Activation methods for magical and cosmic effects
+    createMagicalEffect(x, y, type) {
+        const magicalTypes = ['portal', 'shield', 'spellcircle', 'crystal'];
+        const effectType = type || magicalTypes[Math.floor(Math.random() * magicalTypes.length)];
+        
+        this.activeEffects.push({
+            type: effectType,
+            x: x,
+            y: y,
+            life: 4 + Math.random() * 3
+        });
+        
+        console.log(`🔮 Created ${effectType} effect at ${x}, ${y}`);
+    }
+    
+    createCosmicEffect(x, y, type) {
+        const cosmicTypes = ['starfield', 'nebula', 'solarflare', 'blackhole'];
+        const effectType = type || cosmicTypes[Math.floor(Math.random() * cosmicTypes.length)];
+        
+        this.activeEffects.push({
+            type: effectType,
+            x: x,
+            y: y,
+            life: 5 + Math.random() * 4
+        });
+        
+        console.log(`🌌 Created ${effectType} effect at ${x}, ${y}`);
+    }
+    
+    // Magic mode activation
+    activateMagicMode() {
+        console.log('🔮 MAGIC MODE ACTIVATED!');
+        
+        // Create multiple magical effects
+        for (let i = 0; i < 6; i++) {
+            const x = Math.random() * this.gridWidth;
+            const y = Math.random() * this.gridHeight;
+            this.createMagicalEffect(x, y);
+        }
+        
+        this.updateModeIndicator('🔮 MAGIC MODE ACTIVE');
+        this.saveCanvasState();
+    }
+    
+    // Cosmic mode activation  
+    activateCosmicMode() {
+        console.log('🌌 COSMIC MODE ACTIVATED!');
+        
+        // Create cosmic scene
+        for (let i = 0; i < 5; i++) {
+            const x = Math.random() * this.gridWidth;
+            const y = Math.random() * this.gridHeight;
+            this.createCosmicEffect(x, y);
+        }
+        
+        this.updateModeIndicator('🌌 COSMIC MODE ACTIVE');
+        this.saveCanvasState();
     }
     
     setupCanvas() {
@@ -463,6 +888,28 @@ class PixelCollageBuilder {
         document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
         document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
         document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
+        
+        // 🌌✨ NEW: Magic and Cosmic mode buttons (if they exist)
+        const magicBtn = document.getElementById('magicModeBtn');
+        const cosmicBtn = document.getElementById('cosmicModeBtn');
+        
+        if (magicBtn) {
+            magicBtn.addEventListener('click', () => this.activateMagicMode());
+        }
+        
+        if (cosmicBtn) {
+            cosmicBtn.addEventListener('click', () => this.activateCosmicMode());
+        }
+        
+        // 🌌✨ NEW: Double-click to create magical/cosmic effects
+        this.canvas.addEventListener('dblclick', (e) => {
+            const pos = this.getCanvasPosition(e);
+            if (Math.random() > 0.5) {
+                this.createMagicalEffect(pos.x, pos.y);
+            } else {
+                this.createCosmicEffect(pos.x, pos.y);
+            }
+        });
     }
     
     toggleColorCycling() {
@@ -1077,6 +1524,25 @@ class PixelCollageBuilder {
                     this.ctx.fillStyle = colors[colorIndex] + 'c0';
                     this.ctx.fillRect(sx, sy, 2, 2);
                 }
+                break;
+                
+            // 🌌✨ NEW: Magical and cosmic effect pixel types
+            case 'portal_particle':
+            case 'portal_core':
+            case 'shield_energy':
+            case 'spell_symbol':
+            case 'spell_energy':
+            case 'spell_core':
+            case 'crystal_core':
+            case 'crystal_shard':
+            case 'star':
+            case 'nebula_gas':
+            case 'solar_flare':
+            case 'solar_core':
+            case 'accretion_disk':
+            case 'event_horizon':
+                // These are handled by the magical/cosmic effect renderers
+                this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
                 break;
                 
             default:
@@ -1698,7 +2164,12 @@ class PixelCollageBuilder {
         const animatedTypes = [
             'quantum', 'chaos', 'flicker', 'strobe', 'static', 'distort', 
             'particle', 'lightning', 'temporal', 'nova', 'fractal', 
-            'phantom', 'surge', 'cascade', 'vortex', 'spectrum'
+            'phantom', 'surge', 'cascade', 'vortex', 'spectrum',
+            // 🌌✨ NEW: Magical and cosmic effect types
+            'portal_particle', 'portal_core', 'shield_energy',
+            'spell_symbol', 'spell_energy', 'spell_core',
+            'crystal_core', 'crystal_shard', 'star', 'nebula_gas',
+            'solar_flare', 'solar_core', 'accretion_disk', 'event_horizon'
         ];
         return animatedTypes.includes(type);
     }
@@ -1743,6 +2214,10 @@ class PixelCollageBuilder {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.pixels = new Array(this.gridWidth).fill(null).map(() => new Array(this.gridHeight).fill(null));
         this.canvasHistory.clear(); // Clear history when canvas is cleared
+        
+        // 🌌✨ NEW: Clear magical and cosmic effects
+        this.activeEffects = [];
+        
         this.updatePixelCount();
     }
     
@@ -1769,7 +2244,7 @@ class PixelCollageBuilder {
         document.getElementById('pixelCount').textContent = count;
     }
     
-    // 🚀 FIXED RANDOMIZATION - No more guaranteed center element!
+    // 🚀 ENHANCED RANDOMIZATION WITH MAGICAL & COSMIC EFFECTS!
     randomizeCanvas() {
         // Clear canvas first
         this.clearCanvas();
@@ -1812,8 +2287,25 @@ class PixelCollageBuilder {
             this.drawSprite(geoX, geoY);
         }
         
+        // 🌌✨ NEW STEP 2.5: Add magical and cosmic effects!
+        const numMagicalEffects = 3 + Math.floor(Math.random() * 5); // 3-7 magical effects
+        for (let i = 0; i < numMagicalEffects; i++) {
+            const x = Math.random() * this.gridWidth;
+            const y = Math.random() * this.gridHeight;
+            
+            if (Math.random() > 0.5) {
+                this.createMagicalEffect(x, y);
+            } else {
+                this.createCosmicEffect(x, y);
+            }
+        }
+        
         // Step 3: Scatter quantum texture effects throughout
-        const textures = ['quantum', 'chaos', 'strobe', 'lightning', 'nova', 'spectrum', 'vortex', 'flicker', 'static', 'distort', 'particle', 'temporal', 'fractal', 'phantom', 'surge', 'cascade'];
+        const textures = [
+            'quantum', 'chaos', 'strobe', 'lightning', 'nova', 'spectrum', 'vortex', 
+            'flicker', 'static', 'distort', 'particle', 'temporal', 'fractal', 
+            'phantom', 'surge', 'cascade'
+        ];
         const numTextures = 100 + Math.floor(Math.random() * 100); // 100-200 effects
         
         for (let i = 0; i < numTextures; i++) {
@@ -1920,6 +2412,7 @@ class PixelCollageBuilder {
         this.saveCanvasState();
         this.updatePixelCount();
         console.log('🚀 EPIC RANDOMIZATION COMPLETE! Generated truly randomized composition!');
+        console.log('🌌✨ Including magical portals, cosmic phenomena, and quantum chaos!');
         console.log('🎲 No fixed patterns - every generation is unique!');
     }
 }
