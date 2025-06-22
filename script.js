@@ -11,6 +11,174 @@ class CanvasHistory {
         // Save initial state
         this.saveState();
     }
+
+    generatePixelLibrary() {
+        const library = document.getElementById('pixelLibrary');
+        const pixelTypes = [
+            { type: 'quantum', char: '⚛', color: '#00ff41', desc: 'QUANTUM DOT' },
+            { type: 'chaos', char: '※', color: '#ff006e', desc: 'CHAOS FIELD' },
+            { type: 'flicker', char: '◈', color: '#00f5ff', desc: 'FLICKER STORM' },
+            { type: 'strobe', char: '⚡', color: '#ffff00', desc: 'STROBE PULSE' },
+            { type: 'static', char: '▣', color: '#ff4081', desc: 'STATIC BURST' },
+            { type: 'distort', char: '◉', color: '#9c27b0', desc: 'REALITY TEAR' },
+            { type: 'particle', char: '⬢', color: '#4caf50', desc: 'PARTICLE FLUX' },
+            { type: 'lightning', char: '⟡', color: '#ff9800', desc: 'LIGHTNING ARC' },
+            { type: 'temporal', char: '◎', color: '#03dac6', desc: 'TIME RIFT' },
+            { type: 'nova', char: '※', color: '#607d8b', desc: 'NOVA BURST' },
+            { type: 'fractal', char: '◊', color: '#795548', desc: 'FRACTAL NOISE' },
+            { type: 'phantom', char: '⬡', color: '#e91e63', desc: 'PHANTOM ECHO' },
+            { type: 'surge', char: '⚡', color: '#2196f3', desc: 'ENERGY SURGE' },
+            { type: 'cascade', char: '◈', color: '#00bcd4', desc: 'CASCADE WAVE' },
+            { type: 'vortex', char: '◉', color: '#8b00ff', desc: 'VOID VORTEX' },
+            { type: 'spectrum', char: '⬢', color: '#ffc107', desc: 'SPECTRUM SHIFT' }
+        ];
+        
+        pixelTypes.forEach((pixel, index) => {
+            const item = document.createElement('div');
+            item.className = 'pixel-item';
+            item.innerHTML = `
+                <div style="font-size: 20px; color: ${pixel.color}">${pixel.char}</div>
+                <div style="font-size: 8px; color: #666; margin-top: 2px;">${pixel.desc}</div>
+            `;
+            item.dataset.type = pixel.type;
+            item.addEventListener('click', () => this.selectPixelType(pixel.type, item));
+            library.appendChild(item);
+            
+            // Set first one as selected
+            if (index === 0) {
+                item.classList.add('selected');
+            }
+        });
+    }
+
+    generateSpriteLibrary() {
+        const library = document.getElementById('spriteLibrary');
+        const sprites = [
+            { name: 'fractal', pattern: '◈◇◈', description: 'FRACTAL' },
+            { name: 'mandala', pattern: '※◆※', description: 'MANDALA' },
+            { name: 'spiral', pattern: '◉◎◉', description: 'SPIRAL' },
+            { name: 'matrix', pattern: '▣▢▣', description: 'MATRIX' },
+            { name: 'hexagon', pattern: '⬡⬢⬡', description: 'HEXAGON' },
+            { name: 'crystal', pattern: '◊♦◊', description: 'CRYSTAL' },
+            { name: 'circuit', pattern: '┼┿┼', description: 'CIRCUIT' },
+            { name: 'flower', pattern: '✿❀✿', description: 'FLOWER' },
+            { name: 'galaxy', pattern: '✦※✦', description: 'GALAXY' }
+        ];
+        
+        sprites.forEach(sprite => {
+            const item = document.createElement('div');
+            item.className = 'sprite-item';
+            
+            const preview = document.createElement('div');
+            preview.className = 'preview';
+            preview.textContent = sprite.pattern;
+            preview.style.color = '#00ff41';
+            
+            const label = document.createElement('div');
+            label.textContent = sprite.description;
+            label.style.color = '#00ff41';
+            label.style.fontSize = '10px';
+            
+            item.appendChild(preview);
+            item.appendChild(label);
+            item.dataset.sprite = sprite.name;
+            item.addEventListener('click', () => this.selectSprite(sprite.name, item));
+            library.appendChild(item);
+        });
+    }
+
+    generatePatternLibrary() {
+        const library = document.getElementById('patternLibrary');
+        const patterns = [
+            { name: 'cybermesh', pattern: '▦▦▦', description: 'CYBER MESH', color: '#00ff41' },
+            { name: 'neuralnet', pattern: '◈◇◈', description: 'NEURAL NET', color: '#ff006e' },
+            { name: 'datamatrix', pattern: '■□■', description: 'DATA MATRIX', color: '#00f5ff' },
+            { name: 'circuitboard', pattern: '┼╋┼', description: 'CIRCUIT BOARD', color: '#ffff00' },
+            { name: 'hexgrid', pattern: '⬢⬡⬢', description: 'HEX GRID', color: '#ff4081' },
+            { name: 'starfield', pattern: '✦✧✦', description: 'STAR FIELD', color: '#9c27b0' }
+        ];
+        
+        patterns.forEach(pattern => {
+            const item = document.createElement('div');
+            item.className = 'sprite-item';
+            
+            const preview = document.createElement('div');
+            preview.className = 'preview';
+            preview.textContent = pattern.pattern;
+            preview.style.color = pattern.color;
+            
+            const label = document.createElement('div');
+            label.textContent = pattern.description;
+            label.style.color = '#ff006e';
+            label.style.fontSize = '10px';
+            
+            item.appendChild(preview);
+            item.appendChild(label);
+            item.dataset.pattern = pattern.name;
+            item.addEventListener('click', () => this.selectPattern(pattern.name, item));
+            library.appendChild(item);
+        });
+    }
+
+    generateColorPicker() {
+        const picker = document.getElementById('colorPicker');
+        const colors = [
+            '#00ff41', '#ff006e', '#00f5ff', '#ffff00',
+            '#ff4081', '#4caf50', '#ff9800', '#9c27b0',
+            '#03dac6', '#607d8b', '#795548', '#e91e63',
+            '#000000', '#ffffff', '#808080', '#ff0000',
+            '#2196f3', '#00bcd4', '#ffc107', '#9e9e9e'
+        ];
+        
+        colors.forEach((color, index) => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.addEventListener('click', () => this.selectColor(color, swatch));
+            picker.appendChild(swatch);
+            
+            // Set first one as selected
+            if (index === 0) {
+                swatch.classList.add('selected');
+            }
+        });
+    }
+
+    selectPixelType(type, element) {
+        document.querySelectorAll('#pixelLibrary .pixel-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        this.currentPixelType = type;
+        this.updateToolIndicator();
+    }
+
+    selectSprite(sprite, element) {
+        document.querySelectorAll('#spriteLibrary .sprite-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        // Place sprite at center of canvas
+        const centerX = Math.floor(this.gridWidth / 2);
+        const centerY = Math.floor(this.gridHeight / 2);
+        this.drawGeometricConstruct(sprite, centerX, centerY);
+    }
+
+    selectPattern(pattern, element) {
+        document.querySelectorAll('#patternLibrary .sprite-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        // Generate background pattern
+        this.generateBackground(pattern);
+    }
+
+    selectColor(color, element) {
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        this.currentColor = color;
     
     saveState() {
         if (this.isRestoring) return;
@@ -83,7 +251,7 @@ class PixelCollageBuilder {
     constructor() {
         this.canvas = document.getElementById('canvas');
         this.ctx = this.canvas.getContext('2d');
-        this.gridCanvas = document.getElementById('gridCanvas');
+        this.gridCanvas = document.getElementById('gridOverlay');
         this.gridCtx = this.gridCanvas.getContext('2d');
         
         // Initialize canvas history
@@ -107,6 +275,7 @@ class PixelCollageBuilder {
         this.currentPixelType = 'quantum';
         this.currentBrushSize = 1;
         this.pixels = [];
+        this.showGrid = true;
         
         // Animation and effects
         this.animationTime = 0;
@@ -139,6 +308,12 @@ class PixelCollageBuilder {
         // Initialize pixels array
         this.initializePixels();
         
+        // Generate UI elements
+        this.generatePixelLibrary();
+        this.generateSpriteLibrary();
+        this.generatePatternLibrary();
+        this.generateColorPicker();
+        
         // Setup event listeners and start animation
         this.setupEventListeners();
         this.setupKeyboardShortcuts();
@@ -168,16 +343,16 @@ class PixelCollageBuilder {
         this.canvas.addEventListener('mouseout', () => this.stopDrawing());
         
         // Tool buttons
-        document.getElementById('paintBtn').addEventListener('click', () => this.setTool('paint'));
-        document.getElementById('eraseBtn').addEventListener('click', () => this.setTool('erase'));
-        document.getElementById('fillBtn').addEventListener('click', () => this.setTool('fill'));
-        document.getElementById('sampleBtn').addEventListener('click', () => this.setTool('sample'));
-        document.getElementById('sprayBtn').addEventListener('click', () => this.setTool('spray'));
+        document.getElementById('paintTool').addEventListener('click', () => this.setTool('paint'));
+        document.getElementById('eraseTool').addEventListener('click', () => this.setTool('erase'));
+        document.getElementById('fillTool').addEventListener('click', () => this.setTool('fill'));
+        document.getElementById('pickTool').addEventListener('click', () => this.setTool('sample'));
+        document.getElementById('sprayTool').addEventListener('click', () => this.setTool('spray'));
         
         // Brush size buttons
-        document.getElementById('size1Btn').addEventListener('click', () => this.setBrushSize(1));
-        document.getElementById('size2Btn').addEventListener('click', () => this.setBrushSize(2));
-        document.getElementById('size3Btn').addEventListener('click', () => this.setBrushSize(3));
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => this.setBrushSize(parseInt(e.target.dataset.size), e.target));
+        });
         
         // History buttons
         document.getElementById('undoBtn').addEventListener('click', () => this.history.undo());
@@ -186,9 +361,11 @@ class PixelCollageBuilder {
         // Action buttons
         document.getElementById('retrowaveBtn').addEventListener('click', () => this.cycleRetrowavePalette());
         document.getElementById('colorCycleBtn').addEventListener('click', () => this.toggleColorCycling());
-        document.getElementById('recordBtn').addEventListener('click', () => this.toggleRecording());
-        document.getElementById('epicRandomizeBtn').addEventListener('click', () => this.epicRandomize());
-        document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
+        document.getElementById('recordGifBtn').addEventListener('click', () => this.toggleRecording());
+        document.getElementById('randomize').addEventListener('click', () => this.epicRandomize());
+        document.getElementById('clearCanvas').addEventListener('click', () => this.clearCanvas());
+        document.getElementById('toggleGrid').addEventListener('click', () => this.toggleGrid());
+        document.getElementById('saveImage').addEventListener('click', () => this.saveImage());
         
         // Story Mode button - NEW! (conditional in case button doesn't exist yet)
         const storyModeBtn = document.getElementById('storyModeBtn');
@@ -540,8 +717,8 @@ class PixelCollageBuilder {
         this.maxFrames = 60; // 4 seconds at 15fps
         this.updateModeIndicator('🔴 Recording GIF...');
         
-        document.getElementById('recordBtn').textContent = '⏹️ STOP';
-        document.getElementById('recordBtn').style.background = 'linear-gradient(45deg, #ff0040, #ff4080)';
+        document.getElementById('recordGifBtn').textContent = '⏹️ STOP';
+        document.getElementById('recordGifBtn').style.background = 'linear-gradient(45deg, #ff0040, #ff4080)';
     }
 
     stopRecording() {
@@ -549,8 +726,8 @@ class PixelCollageBuilder {
             this.recording = false;
             this.updateModeIndicator('Processing GIF...');
             
-            document.getElementById('recordBtn').textContent = '📹 RECORD';
-            document.getElementById('recordBtn').style.background = '';
+            document.getElementById('recordGifBtn').textContent = '📹 RECORD';
+            document.getElementById('recordGifBtn').style.background = '';
             
             this.gif.render();
         }
@@ -1318,6 +1495,24 @@ class PixelCollageBuilder {
             this.gridCtx.lineTo(this.canvas.width, y * this.pixelSize);
             this.gridCtx.stroke();
         }
+    }
+
+    toggleGrid() {
+        this.showGrid = !this.showGrid;
+        if (this.showGrid) {
+            this.drawGrid();
+        } else {
+            this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
+        }
+        this.updateModeIndicator(this.showGrid ? 'Grid enabled!' : 'Grid disabled!');
+    }
+
+    saveImage() {
+        const link = document.createElement('a');
+        link.download = `pixel-forge-creation-${Date.now()}.png`;
+        link.href = this.canvas.toDataURL();
+        link.click();
+        this.updateModeIndicator('Image exported successfully!');
     }
 
     animate() {
