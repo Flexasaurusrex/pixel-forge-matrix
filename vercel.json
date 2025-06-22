@@ -8,6 +8,10 @@
   ],
   "routes": [
     {
+      "src": "/storyteller/?",
+      "dest": "/storyteller/index.html"
+    },
+    {
       "src": "/mobile/?",
       "dest": "/mobile/index.html"
     },
