@@ -190,8 +190,11 @@ class PixelCollageBuilder {
         document.getElementById('epicRandomizeBtn').addEventListener('click', () => this.epicRandomize());
         document.getElementById('clearBtn').addEventListener('click', () => this.clearCanvas());
         
-        // Story Mode button - NEW!
-        document.getElementById('storyModeBtn').addEventListener('click', () => this.launchStoryMode());
+        // Story Mode button - NEW! (conditional in case button doesn't exist yet)
+        const storyModeBtn = document.getElementById('storyModeBtn');
+        if (storyModeBtn) {
+            storyModeBtn.addEventListener('click', () => this.launchStoryMode());
+        }
         
         // Color picker
         document.getElementById('colorPicker').addEventListener('change', (e) => {
@@ -251,8 +254,10 @@ class PixelCollageBuilder {
         
         // Visual feedback on button
         const btn = document.getElementById('storyModeBtn');
-        btn.style.background = 'linear-gradient(45deg, #ff006e, #8338ec)';
-        btn.style.transform = 'scale(0.95)';
+        if (btn) {
+            btn.style.background = 'linear-gradient(45deg, #ff006e, #8338ec)';
+            btn.style.transform = 'scale(0.95)';
+        }
         
         // Cosmic transition effect
         this.createCosmicTransition();
@@ -888,7 +893,7 @@ class PixelCollageBuilder {
                 if (x >= 0 && x < this.gridWidth && y >= 0 && y < this.gridHeight) {
                     this.setPixel(x, y, {
                         color: '#00ffff',
-                        type: 'crystal'
+                        type: 'spectrum'
                     });
                 }
             }
@@ -1422,7 +1427,7 @@ class PixelCollageBuilder {
                 
             case 'temporal':
                 const phase = Math.sin(localTime * 3) * 0.5 + 0.5;
-                return `rgba(${pixel.color.slice(1, 3)}, ${pixel.color.slice(3, 5)}, ${pixel.color.slice(5, 7)}, ${phase})`;
+                return `rgba(${parseInt(baseColor.slice(1, 3), 16)}, ${parseInt(baseColor.slice(3, 5), 16)}, ${parseInt(baseColor.slice(5, 7), 16)}, ${phase})`;
                 
             case 'nova':
                 const pulse = Math.sin(localTime * 6) * 0.3 + 0.7;
